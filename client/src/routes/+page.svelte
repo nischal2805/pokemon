@@ -4,6 +4,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { socket, onlineUsers } from '$lib/stores/socket';
   import { battleState, submitTeamPaste } from '$lib/stores/battle';
+  import { preloadFromPaste } from '$lib/sprites';
   import { get } from 'svelte/store';
 
   let formatId = $state('gen9randombattle');
@@ -124,6 +125,9 @@
   function confirmTeamPick(teamPaste: string) {
     const s = get(socket);
     if (!s) return;
+
+    // Preload sprites for the team being submitted
+    preloadFromPaste(teamPaste);
 
     if (teamPickerAction === 'challenge') {
       // Emit challenge with team included

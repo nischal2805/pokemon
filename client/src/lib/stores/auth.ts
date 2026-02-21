@@ -8,7 +8,9 @@ interface User {
 export const user = writable<User | null>(null);
 export const isLoggedIn = derived(user, ($u) => $u !== null);
 
-const API = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+// In Docker behind nginx, VITE_SERVER_URL is empty → same-origin requests.
+// In dev, it falls back to localhost:3001.
+const API = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:3001';
 
 /**
  * Low-level fetch wrapper with credentials. Returns the raw Response.

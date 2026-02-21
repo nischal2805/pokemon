@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { user } from '$lib/stores/auth';
   import { battleState, sendMove, sendSwitch, sendTeam, sendForfeit } from '$lib/stores/battle';
+  import { isAnimating, resetAnimQueue } from '$lib/stores/animQueue';
   import BattleField from '$lib/components/BattleField.svelte';
   import MovePanel from '$lib/components/MovePanel.svelte';
   import PartyPanel from '$lib/components/PartyPanel.svelte';
@@ -24,6 +25,7 @@
   }
 
   function goToLobby() {
+    resetAnimQueue();
     battleState.set(null);
     goto('/');
   }
@@ -51,31 +53,52 @@
 <div class="max-w-6xl mx-auto p-4">
   {#if !$battleState}
     <div class="text-center py-20">
-      <p class="text-xl text-[var(--text-muted)]">Waiting for battle data...</p>
+      <div class="inline-block animate-pulse">
+        <div class="text-6xl mb-4">⚔️</div>
+        <p class="text-lg text-[var(--text-muted)] font-medium">Connecting to battle...</p>
+        <div class="mt-4 flex justify-center gap-1">
+          <div class="w-2 h-2 bg-[var(--accent)] rounded-full animate-bounce" style="animation-delay: 0ms;"></div>
+          <div class="w-2 h-2 bg-[var(--accent)] rounded-full animate-bounce" style="animation-delay: 150ms;"></div>
+          <div class="w-2 h-2 bg-[var(--accent)] rounded-full animate-bounce" style="animation-delay: 300ms;"></div>
+        </div>
+      </div>
     </div>
   {:else}
     <!-- Battle Header -->
-    <div class="flex items-center justify-between mb-4">
-      <div class="text-sm text-[var(--text-muted)]">
-        <span class="font-medium text-[var(--text-primary)]">{$battleState.format}</span>
-        <span class="mx-2">—</span>
-        Turn {$battleState.turn}
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-3">
+        <span class="text-lg">⚔️</span>
+        <div>
+          <span class="font-bold text-sm text-white">{$battleState.format}</span>
+          <span class="text-[var(--text-muted)] text-xs ml-2">Turn {$battleState.turn}</span>
+        </div>
       </div>
       <div class="flex gap-2">
         {#if !$battleState.ended}
           {#if showForfeitConfirm}
-            <span class="text-sm text-[var(--text-muted)] mr-2">Are you sure?</span>
+            <span class="text-sm text-[var(--text-muted)] mr-2 self-center">Are you sure?</span>
             <button onclick={handleForfeit}
-              class="bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-sm font-medium transition-colors">Yes, Forfeit</button>
+              class="bg-red-600 hover:bg-red-500 px-4 py-1.5 rounded-lg text-sm font-bold transition-all active:scale-95">
+              Yes, Forfeit
+            </button>
             <button onclick={() => showForfeitConfirm = false}
-              class="bg-[var(--bg-card)] px-3 py-1 rounded text-sm transition-colors">Cancel</button>
+              class="bg-[var(--bg-card)] hover:bg-[var(--bg-secondary)] px-4 py-1.5 rounded-lg text-sm transition-all">
+              Cancel
+            </button>
           {:else}
             <button onclick={() => showForfeitConfirm = true}
-              class="bg-red-900/50 hover:bg-red-800/50 text-red-300 px-3 py-1 rounded text-sm transition-colors">🏳️ Forfeit</button>
+              class="bg-red-950/50 hover:bg-red-900/50 text-red-300 px-4 py-1.5 rounded-lg text-sm font-medium transition-all
+                border border-red-800/30 hover:border-red-700/40">
+              🏳️ Forfeit
+            </button>
           {/if}
         {:else}
           <button onclick={goToLobby}
-            class="bg-[var(--accent)] hover:bg-[var(--accent-hover)] px-4 py-1 rounded text-sm font-medium transition-colors">Back to Lobby</button>
+            class="bg-gradient-to-r from-[var(--accent)] to-pink-600 hover:from-[var(--accent-hover)] hover:to-pink-500
+              px-5 py-1.5 rounded-lg text-sm font-bold transition-all active:scale-95
+              shadow-lg shadow-[var(--accent)]/20">
+            ← Back to Lobby
+          </button>
         {/if}
       </div>
     </div>
@@ -86,19 +109,20 @@
         <BattleField state={$battleState} />
 
         {#if $battleState.ended}
-          <div class="bg-[var(--bg-card)] rounded-xl p-6 text-center">
-            <h2 class="text-2xl font-bold mb-2">
-              {#if $battleState.winner === $user?.username}
-                🎉 You Won!
-              {:else if $battleState.winner === 'tie'}
-                🤝 It's a Tie!
-              {:else}
-                💀 You Lost
-              {/if}
-            </h2>
-            <p class="text-[var(--text-muted)]">
-              {$battleState.winner && $battleState.winner !== 'tie' ? `Winner: ${$battleState.winner}` : 'The battle ended in a tie.'}
-            </p>
+          <div class="result-banner rounded-2xl p-8 text-center">
+            {#if $battleState.winner === $user?.username}
+              <div class="text-5xl mb-3">🎉</div>
+              <h2 class="text-3xl font-black text-green-400 mb-1">Victory!</h2>
+              <p class="text-sm text-green-300/60">You won the battle!</p>
+            {:else if $battleState.winner === 'tie'}
+              <div class="text-5xl mb-3">🤝</div>
+              <h2 class="text-3xl font-black text-yellow-400 mb-1">Tie!</h2>
+              <p class="text-sm text-yellow-300/60">The battle ended in a draw.</p>
+            {:else}
+              <div class="text-5xl mb-3">💀</div>
+              <h2 class="text-3xl font-black text-red-400 mb-1">Defeat</h2>
+              <p class="text-sm text-red-300/60">Winner: {$battleState.winner}</p>
+            {/if}
           </div>
         {:else if needsTeam}
           <TeamSelect
@@ -124,16 +148,34 @@
             />
           {/if}
         {:else if $battleState.waiting}
-          <div class="bg-[var(--bg-card)] rounded-xl p-4 text-center text-[var(--text-muted)]">
-            ⏳ Waiting for opponent...
+          <div class="waiting-panel rounded-2xl p-6 text-center">
+            <div class="inline-flex items-center gap-3">
+              <div class="flex gap-1">
+                <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0ms;"></div>
+                <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 150ms;"></div>
+                <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 300ms;"></div>
+              </div>
+              <span class="text-sm text-blue-300/80 font-medium">Waiting for opponent...</span>
+            </div>
           </div>
         {/if}
       </div>
 
       <!-- Battle Log -->
       <div class="lg:col-span-1">
-        <BattleLog logs={$battleState.log} />
+        <BattleLog />
       </div>
     </div>
   {/if}
 </div>
+
+<style>
+  .result-banner {
+    background: linear-gradient(135deg, rgba(15, 25, 60, 0.9), rgba(10, 18, 40, 0.95));
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .waiting-panel {
+    background: linear-gradient(135deg, rgba(15, 25, 60, 0.7), rgba(10, 18, 40, 0.8));
+    border: 1px solid rgba(59, 130, 246, 0.15);
+  }
+</style>

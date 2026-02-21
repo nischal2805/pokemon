@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head><title>Sprite Test</title><style>body{background:#1a1a2e;color:#eee;font-family:sans-serif;padding:20px}img{margin:10px;background:rgba(255,255,255,0.05);border-radius:8px}.row{display:flex;align-items:center;gap:20px;margin:10px 0;flex-wrap:wrap}.label{min-width:200px;font-size:14px}img.fail{border:2px solid red}img.ok{border:2px solid green}</style></head>
+<body>
+<h1>🔍 Sprite Loading Test</h1>
+<p>If sprites show with green borders = working. Red border = broken.</p>
+
+<h2>Showdown Animated (ani/)</h2>
+<div class="row">
+  <span class="label">Pikachu front:</span>
+  <img src="https://play.pokemonshowdown.com/sprites/ani/pikachu.gif" width="96" height="96">
+</div>
+<div class="row">
+  <span class="label">Pikachu back:</span>
+  <img src="https://play.pokemonshowdown.com/sprites/ani-back/pikachu.gif" width="96" height="96">
+</div>
+<div class="row">
+  <span class="label">Snorlax front:</span>
+  <img src="https://play.pokemonshowdown.com/sprites/ani/snorlax.gif" width="96" height="96">
+</div>
+<div class="row">
+  <span class="label">Garchomp front:</span>
+  <img src="https://play.pokemonshowdown.com/sprites/ani/garchomp.gif" width="96" height="96">
+</div>
+<div class="row">
+  <span class="label">Great Tusk (gen9):</span>
+  <img src="https://play.pokemonshowdown.com/sprites/ani/greattusk.gif" width="96" height="96">
+</div>
+<div class="row">
+  <span class="label">Iron Bundle (gen9):</span>
+  <img src="https://play.pokemonshowdown.com/sprites/ani/ironbundle.gif" width="96" height="96">
+</div>
+<div class="row">
+  <span class="label">Landorus-Therian:</span>
+  <img src="https://play.pokemonshowdown.com/sprites/ani/landorus-therian.gif" width="96" height="96">
+</div>
+
+<h2>Showdown Gen5 static (gen5/)</h2>
+<div class="row">
+  <span class="label">Pikachu gen5:</span>
+  <img src="https://play.pokemonshowdown.com/sprites/gen5/pikachu.png" width="96" height="96">
+</div>
+<div class="row">
+  <span class="label">Great Tusk gen5:</span>
+  <img src="https://play.pokemonshowdown.com/sprites/gen5/greattusk.png" width="96" height="96">
+</div>
+
+<h2>PokeAPI GitHub (number-based)</h2>
+<div class="row">
+  <span class="label">Pikachu (#25):</span>
+  <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif" width="96" height="96">
+</div>
+<div class="row">
+  <span class="label">Snorlax (#143):</span>
+  <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/143.gif" width="96" height="96">
+</div>
+
+<script>
+document.querySelectorAll('img').forEach(img => {
+  img.onload = () => { img.classList.add('ok'); };
+  img.onerror = () => { img.classList.add('fail'); img.alt = 'FAILED'; };
+});
+</script>
+</body>
+</html>

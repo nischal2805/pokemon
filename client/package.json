@@ -23,6 +23,7 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
+		"@pkmn/img": "^0.3.3",
 		"@sveltejs/adapter-node": "^5.5.3",
 		"socket.io-client": "^4.8.3"
 	}

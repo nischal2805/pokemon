@@ -1,0 +1,558 @@
+/**
+ * Move animation effect definitions — pure CSS visual effects for battle moves.
+ * Inspired by Showdown's approach but using pure CSS animations + DOM elements.
+ *
+ * Each move type gets a visual style:
+ *  - Physical: slash / impact / punch effects
+ *  - Special: projectile orbs / beams
+ *  - Status: aura / glow / particles
+ *
+ * We also define generic "hit" patterns per type using colored shapes.
+ */
+
+/** Type color palette matching Pokemon type colors */
+export const TYPE_COLORS: Record<string, string> = {
+  Normal:   '#A8A878',
+  Fire:     '#F08030',
+  Water:    '#6890F0',
+  Electric: '#F8D030',
+  Grass:    '#78C850',
+  Ice:      '#98D8D8',
+  Fighting: '#C03028',
+  Poison:   '#A040A0',
+  Ground:   '#E0C068',
+  Flying:   '#A890F0',
+  Psychic:  '#F85888',
+  Bug:      '#A8B820',
+  Rock:     '#B8A038',
+  Ghost:    '#705898',
+  Dragon:   '#7038F8',
+  Dark:     '#705848',
+  Steel:    '#B8B8D0',
+  Fairy:    '#EE99AC',
+  Stellar:  '#44BBFF',
+};
+
+/** The shape of effect to use for the attack animation */
+export type EffectShape = 'orb' | 'slash' | 'beam' | 'burst' | 'wave' | 'aura';
+
+interface MoveVisual {
+  shape: EffectShape;
+  color: string;
+  glow: string;       // glow/shadow color
+  secondary?: string;  // secondary color for gradients
+  scale?: number;      // size multiplier
+}
+
+/** Get visual effect data for a move by its type and category (+ optional shape override) */
+export function getMoveVisual(typeName?: string, category?: string, shapeOverride?: EffectShape): MoveVisual {
+  const type = typeName ?? 'Normal';
+  const color = TYPE_COLORS[type] ?? TYPE_COLORS['Normal'];
+  const cat = (category ?? 'Special').toLowerCase();
+
+  // Lighten color for glow
+  const glow = color;
+
+  if (cat === 'physical') {
+    // Physical moves: slashes, punches, impacts
+    const shapeMap: Record<string, EffectShape> = {
+      Fighting: 'burst',
+      Rock:     'burst',
+      Ground:   'wave',
+      Steel:    'slash',
+      Bug:      'slash',
+      Normal:   'slash',
+      Dragon:   'slash',
+      Dark:     'slash',
+    };
+    return {
+      shape: shapeOverride ?? shapeMap[type] ?? 'slash',
+      color,
+      glow,
+      secondary: darken(color),
+    };
+  }
+
+  if (cat === 'status') {
+    return {
+      shape: shapeOverride ?? 'aura',
+      color,
+      glow,
+      secondary: lighten(color),
+      scale: 1.2,
+    };
+  }
+
+  // Special moves: orbs, beams
+  const shapeMap: Record<string, EffectShape> = {
+    Fire:     'orb',
+    Water:    'wave',
+    Electric: 'beam',
+    Ice:      'orb',
+    Psychic:  'orb',
+    Ghost:    'orb',
+    Dragon:   'beam',
+    Fairy:    'orb',
+    Grass:    'orb',
+    Poison:   'orb',
+    Flying:   'wave',
+    Dark:     'orb',
+    Stellar:  'beam',
+  };
+
+  return {
+    shape: shapeOverride ?? shapeMap[type] ?? 'orb',
+    color,
+    glow,
+    secondary: lighten(color),
+  };
+}
+
+function darken(hex: string): string {
+  const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - 40);
+  const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - 40);
+  const b = Math.max(0, parseInt(hex.slice(5, 7), 16) - 40);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+function lighten(hex: string): string {
+  const r = Math.min(255, parseInt(hex.slice(1, 3), 16) + 60);
+  const g = Math.min(255, parseInt(hex.slice(3, 5), 16) + 60);
+  const b = Math.min(255, parseInt(hex.slice(5, 7), 16) + 60);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+/** Simple type name map for common moves — auto-generated from @pkmn/sim (935 moves) */
+const MOVE_TYPES: Record<string, string> = {
+  // Bug (34)
+  attackorder: 'Bug', bugbite: 'Bug', bugbuzz: 'Bug', defendorder: 'Bug', fellstinger: 'Bug',
+  firstimpression: 'Bug', furycutter: 'Bug', gmaxbefuddle: 'Bug', healorder: 'Bug', infestation: 'Bug',
+  leechlife: 'Bug', lunge: 'Bug', maxflutterby: 'Bug', megahorn: 'Bug', pinmissile: 'Bug',
+  pollenpuff: 'Bug', pounce: 'Bug', powder: 'Bug', quiverdance: 'Bug', ragepowder: 'Bug',
+  savagespinout: 'Bug', signalbeam: 'Bug', silktrap: 'Bug', silverwind: 'Bug', skittersmack: 'Bug',
+  spiderweb: 'Bug', steamroller: 'Bug', stickyweb: 'Bug', stringshot: 'Bug', strugglebug: 'Bug',
+  tailglow: 'Bug', twineedle: 'Bug', uturn: 'Bug', xscissor: 'Bug',
+  // Dark (53)
+  assurance: 'Dark', baddybad: 'Dark', beatup: 'Dark', bite: 'Dark', blackholeeclipse: 'Dark',
+  brutalswing: 'Dark', ceaselessedge: 'Dark', comeuppance: 'Dark', crunch: 'Dark', darkestlariat: 'Dark',
+  darkpulse: 'Dark', darkvoid: 'Dark', embargo: 'Dark', faketears: 'Dark', falsesurrender: 'Dark',
+  feintattack: 'Dark', fierywrath: 'Dark', flatter: 'Dark', fling: 'Dark', foulplay: 'Dark',
+  gmaxoneblow: 'Dark', gmaxsnooze: 'Dark', honeclaws: 'Dark', hyperspacefury: 'Dark', jawlock: 'Dark',
+  knockoff: 'Dark', kowtowcleave: 'Dark', lashout: 'Dark', maliciousmoonsault: 'Dark', maxdarkness: 'Dark',
+  memento: 'Dark', nastyplot: 'Dark', nightdaze: 'Dark', nightslash: 'Dark', obstruct: 'Dark',
+  partingshot: 'Dark', payback: 'Dark', powertrip: 'Dark', punishment: 'Dark', pursuit: 'Dark',
+  quash: 'Dark', ruination: 'Dark', snarl: 'Dark', snatch: 'Dark', suckerpunch: 'Dark',
+  switcheroo: 'Dark', taunt: 'Dark', thief: 'Dark', throatchop: 'Dark', topsyturvy: 'Dark',
+  torment: 'Dark', wickedblow: 'Dark', wickedtorque: 'Dark',
+  // Dragon (32)
+  breakingswipe: 'Dragon', clangingscales: 'Dragon', clangoroussoul: 'Dragon', clangoroussoulblaze: 'Dragon', coreenforcer: 'Dragon',
+  devastatingdrake: 'Dragon', dracometeor: 'Dragon', dragonbreath: 'Dragon', dragoncheer: 'Dragon', dragonclaw: 'Dragon',
+  dragondance: 'Dragon', dragondarts: 'Dragon', dragonenergy: 'Dragon', dragonhammer: 'Dragon', dragonpulse: 'Dragon',
+  dragonrage: 'Dragon', dragonrush: 'Dragon', dragontail: 'Dragon', dualchop: 'Dragon', dynamaxcannon: 'Dragon',
+  eternabeam: 'Dragon', ficklebeam: 'Dragon', glaiverush: 'Dragon', gmaxdepletion: 'Dragon', maxwyrmwind: 'Dragon',
+  nihillight: 'Dragon', orderup: 'Dragon', outrage: 'Dragon', roaroftime: 'Dragon', scaleshot: 'Dragon',
+  spacialrend: 'Dragon', twister: 'Dragon',
+  // Electric (50)
+  '10000000voltthunderbolt': 'Electric', aurawheel: 'Electric', boltbeak: 'Electric', boltstrike: 'Electric', buzzybuzz: 'Electric',
+  catastropika: 'Electric', charge: 'Electric', chargebeam: 'Electric', discharge: 'Electric', doubleshock: 'Electric',
+  eerieimpulse: 'Electric', electricterrain: 'Electric', electrify: 'Electric', electroball: 'Electric', electrodrift: 'Electric',
+  electroshot: 'Electric', electroweb: 'Electric', fusionbolt: 'Electric', gigavolthavoc: 'Electric', gmaxstunshock: 'Electric',
+  gmaxvoltcrash: 'Electric', iondeluge: 'Electric', magneticflux: 'Electric', magnetrise: 'Electric', maxlightning: 'Electric',
+  nuzzle: 'Electric', overdrive: 'Electric', paraboliccharge: 'Electric', pikapapow: 'Electric', plasmafists: 'Electric',
+  risingvoltage: 'Electric', shockwave: 'Electric', spark: 'Electric', stokedsparksurfer: 'Electric', supercellslam: 'Electric',
+  thunder: 'Electric', thunderbolt: 'Electric', thundercage: 'Electric', thunderclap: 'Electric', thunderfang: 'Electric',
+  thunderpunch: 'Electric', thundershock: 'Electric', thunderwave: 'Electric', voltswitch: 'Electric', volttackle: 'Electric',
+  wildboltstorm: 'Electric', wildcharge: 'Electric', zapcannon: 'Electric', zingzap: 'Electric', zippyzap: 'Electric',
+  // Fairy (34)
+  alluringvoice: 'Fairy', aromaticmist: 'Fairy', babydolleyes: 'Fairy', charm: 'Fairy', craftyshield: 'Fairy',
+  dazzlinggleam: 'Fairy', decorate: 'Fairy', disarmingvoice: 'Fairy', drainingkiss: 'Fairy', fairylock: 'Fairy',
+  fairywind: 'Fairy', fleurcannon: 'Fairy', floralhealing: 'Fairy', flowershield: 'Fairy', geomancy: 'Fairy',
+  gmaxfinale: 'Fairy', gmaxsmite: 'Fairy', guardianofalola: 'Fairy', letssnuggleforever: 'Fairy', lightofruin: 'Fairy',
+  magicaltorque: 'Fairy', maxstarfall: 'Fairy', mistyexplosion: 'Fairy', mistyterrain: 'Fairy', moonblast: 'Fairy',
+  moonlight: 'Fairy', naturesmadness: 'Fairy', playrough: 'Fairy', sparklyswirl: 'Fairy', spiritbreak: 'Fairy',
+  springtidestorm: 'Fairy', strangesteam: 'Fairy', sweetkiss: 'Fairy', twinkletackle: 'Fairy',
+  // Fighting (57)
+  alloutpummeling: 'Fighting', armthrust: 'Fighting', aurasphere: 'Fighting', axekick: 'Fighting', bodypress: 'Fighting',
+  brickbreak: 'Fighting', bulkup: 'Fighting', circlethrow: 'Fighting', closecombat: 'Fighting', coaching: 'Fighting',
+  collisioncourse: 'Fighting', combattorque: 'Fighting', counter: 'Fighting', crosschop: 'Fighting', detect: 'Fighting',
+  doublekick: 'Fighting', drainpunch: 'Fighting', dynamicpunch: 'Fighting', finalgambit: 'Fighting', flyingpress: 'Fighting',
+  focusblast: 'Fighting', focuspunch: 'Fighting', forcepalm: 'Fighting', gmaxchistrike: 'Fighting', hammerarm: 'Fighting',
+  highjumpkick: 'Fighting', jumpkick: 'Fighting', karatechop: 'Fighting', lowkick: 'Fighting', lowsweep: 'Fighting',
+  machpunch: 'Fighting', matblock: 'Fighting', maxknuckle: 'Fighting', meteorassault: 'Fighting', noretreat: 'Fighting',
+  octolock: 'Fighting', poweruppunch: 'Fighting', quickguard: 'Fighting', revenge: 'Fighting', reversal: 'Fighting',
+  rocksmash: 'Fighting', rollingkick: 'Fighting', sacredsword: 'Fighting', secretsword: 'Fighting', seismictoss: 'Fighting',
+  skyuppercut: 'Fighting', stormthrow: 'Fighting', submission: 'Fighting', superpower: 'Fighting', thunderouskick: 'Fighting',
+  triplearrows: 'Fighting', triplekick: 'Fighting', upperhand: 'Fighting', vacuumwave: 'Fighting', victorydance: 'Fighting',
+  vitalthrow: 'Fighting', wakeupslap: 'Fighting',
+  // Fire (49)
+  armorcannon: 'Fire', bitterblade: 'Fire', blastburn: 'Fire', blazekick: 'Fire', blazingtorque: 'Fire',
+  blueflare: 'Fire', burningbulwark: 'Fire', burningjealousy: 'Fire', burnup: 'Fire', ember: 'Fire',
+  eruption: 'Fire', fierydance: 'Fire', fireblast: 'Fire', firefang: 'Fire', firelash: 'Fire',
+  firepledge: 'Fire', firepunch: 'Fire', firespin: 'Fire', flameburst: 'Fire', flamecharge: 'Fire',
+  flamethrower: 'Fire', flamewheel: 'Fire', flareblitz: 'Fire', fusionflare: 'Fire', gmaxcentiferno: 'Fire',
+  gmaxfireball: 'Fire', gmaxwildfire: 'Fire', heatcrash: 'Fire', heatwave: 'Fire', incinerate: 'Fire',
+  inferno: 'Fire', infernooverdrive: 'Fire', lavaplume: 'Fire', magmastorm: 'Fire', maxflare: 'Fire',
+  mindblown: 'Fire', mysticalfire: 'Fire', overheat: 'Fire', pyroball: 'Fire', ragingfury: 'Fire',
+  sacredfire: 'Fire', searingshot: 'Fire', shelltrap: 'Fire', sizzlyslide: 'Fire', sunnyday: 'Fire',
+  temperflare: 'Fire', torchsong: 'Fire', vcreate: 'Fire', willowisp: 'Fire',
+  // Flying (31)
+  acrobatics: 'Flying', aerialace: 'Flying', aeroblast: 'Flying', aircutter: 'Flying', airslash: 'Flying',
+  beakblast: 'Flying', bleakwindstorm: 'Flying', bounce: 'Flying', bravebird: 'Flying', chatter: 'Flying',
+  defog: 'Flying', dragonascent: 'Flying', drillpeck: 'Flying', dualwingbeat: 'Flying', featherdance: 'Flying',
+  floatyfall: 'Flying', fly: 'Flying', gmaxwindrage: 'Flying', gust: 'Flying', hurricane: 'Flying',
+  maxairstream: 'Flying', mirrormove: 'Flying', oblivionwing: 'Flying', peck: 'Flying', pluck: 'Flying',
+  roost: 'Flying', skyattack: 'Flying', skydrop: 'Flying', supersonicskystrike: 'Flying', tailwind: 'Flying',
+  wingattack: 'Flying',
+  // Ghost (34)
+  astonish: 'Ghost', astralbarrage: 'Ghost', bittermalice: 'Ghost', confuseray: 'Ghost', curse: 'Ghost',
+  destinybond: 'Ghost', gmaxterror: 'Ghost', grudge: 'Ghost', hex: 'Ghost', infernalparade: 'Ghost',
+  lastrespects: 'Ghost', lick: 'Ghost', maxphantasm: 'Ghost', menacingmoonrazemaelstrom: 'Ghost', moongeistbeam: 'Ghost',
+  neverendingnightmare: 'Ghost', nightmare: 'Ghost', nightshade: 'Ghost', ominouswind: 'Ghost', phantomforce: 'Ghost',
+  poltergeist: 'Ghost', ragefist: 'Ghost', shadowball: 'Ghost', shadowbone: 'Ghost', shadowclaw: 'Ghost',
+  shadowforce: 'Ghost', shadowpunch: 'Ghost', shadowsneak: 'Ghost', sinisterarrowraid: 'Ghost', soulstealing7starstrike: 'Ghost',
+  spectralthief: 'Ghost', spiritshackle: 'Ghost', spite: 'Ghost', trickortreat: 'Ghost',
+  // Grass (62)
+  absorb: 'Grass', appleacid: 'Grass', aromatherapy: 'Grass', bloomdoom: 'Grass', branchpoke: 'Grass',
+  bulletseed: 'Grass', chloroblast: 'Grass', cottonguard: 'Grass', cottonspore: 'Grass', drumbeating: 'Grass',
+  energyball: 'Grass', flowertrick: 'Grass', forestscurse: 'Grass', frenzyplant: 'Grass', gigadrain: 'Grass',
+  gmaxdrumsolo: 'Grass', gmaxsweetness: 'Grass', gmaxtartness: 'Grass', gmaxvinelash: 'Grass', grassknot: 'Grass',
+  grasspledge: 'Grass', grasswhistle: 'Grass', grassyglide: 'Grass', grassyterrain: 'Grass', gravapple: 'Grass',
+  hornleech: 'Grass', ingrain: 'Grass', ivycudgel: 'Grass', junglehealing: 'Grass', leafage: 'Grass',
+  leafblade: 'Grass', leafstorm: 'Grass', leaftornado: 'Grass', leechseed: 'Grass', magicalleaf: 'Grass',
+  matchagotcha: 'Grass', maxovergrowth: 'Grass', megadrain: 'Grass', needlearm: 'Grass', petalblizzard: 'Grass',
+  petaldance: 'Grass', powerwhip: 'Grass', razorleaf: 'Grass', sappyseed: 'Grass', seedbomb: 'Grass',
+  seedflare: 'Grass', sleeppowder: 'Grass', snaptrap: 'Grass', solarbeam: 'Grass', solarblade: 'Grass',
+  spicyextract: 'Grass', spikyshield: 'Grass', spore: 'Grass', strengthsap: 'Grass', stunspore: 'Grass',
+  synthesis: 'Grass', syrupbomb: 'Grass', trailblaze: 'Grass', tropkick: 'Grass', vinewhip: 'Grass',
+  woodhammer: 'Grass', worryseed: 'Grass',
+  // Ground (31)
+  boneclub: 'Ground', bonemerang: 'Ground', bonerush: 'Ground', bulldoze: 'Ground', dig: 'Ground',
+  drillrun: 'Ground', earthpower: 'Ground', earthquake: 'Ground', fissure: 'Ground', gmaxsandblast: 'Ground',
+  headlongrush: 'Ground', highhorsepower: 'Ground', landswrath: 'Ground', magnitude: 'Ground', maxquake: 'Ground',
+  mudbomb: 'Ground', mudshot: 'Ground', mudslap: 'Ground', mudsport: 'Ground', precipiceblades: 'Ground',
+  rototiller: 'Ground', sandattack: 'Ground', sandsearstorm: 'Ground', sandtomb: 'Ground', scorchingsands: 'Ground',
+  shoreup: 'Ground', spikes: 'Ground', stompingtantrum: 'Ground', tectonicrage: 'Ground', thousandarrows: 'Ground',
+  thousandwaves: 'Ground',
+  // Ice (33)
+  aurorabeam: 'Ice', auroraveil: 'Ice', avalanche: 'Ice', blizzard: 'Ice', chillyreception: 'Ice',
+  freezedry: 'Ice', freezeshock: 'Ice', freezyfrost: 'Ice', frostbreath: 'Ice', glaciallance: 'Ice',
+  glaciate: 'Ice', gmaxresonance: 'Ice', hail: 'Ice', haze: 'Ice', iceball: 'Ice',
+  icebeam: 'Ice', iceburn: 'Ice', icefang: 'Ice', icehammer: 'Ice', icepunch: 'Ice',
+  iceshard: 'Ice', icespinner: 'Ice', iciclecrash: 'Ice', iciclespear: 'Ice', icywind: 'Ice',
+  maxhailstorm: 'Ice', mist: 'Ice', mountaingale: 'Ice', powdersnow: 'Ice', sheercold: 'Ice',
+  snowscape: 'Ice', subzeroslammer: 'Ice', tripleaxel: 'Ice',
+  // Normal (201)
+  acupressure: 'Normal', afteryou: 'Normal', assist: 'Normal', attract: 'Normal', barrage: 'Normal',
+  batonpass: 'Normal', bellydrum: 'Normal', bestow: 'Normal', bide: 'Normal', bind: 'Normal',
+  block: 'Normal', bloodmoon: 'Normal', bodyslam: 'Normal', boomburst: 'Normal', breakneckblitz: 'Normal',
+  camouflage: 'Normal', captivate: 'Normal', celebrate: 'Normal', chipaway: 'Normal', cometpunch: 'Normal',
+  confide: 'Normal', constrict: 'Normal', conversion: 'Normal', conversion2: 'Normal', copycat: 'Normal',
+  courtchange: 'Normal', covet: 'Normal', crushclaw: 'Normal', crushgrip: 'Normal', cut: 'Normal',
+  defensecurl: 'Normal', disable: 'Normal', dizzypunch: 'Normal', doodle: 'Normal', doubleedge: 'Normal',
+  doublehit: 'Normal', doubleslap: 'Normal', doubleteam: 'Normal', echoedvoice: 'Normal', eggbomb: 'Normal',
+  encore: 'Normal', endeavor: 'Normal', endure: 'Normal', entrainment: 'Normal', explosion: 'Normal',
+  extremeevoboost: 'Normal', extremespeed: 'Normal', facade: 'Normal', fakeout: 'Normal', falseswipe: 'Normal',
+  feint: 'Normal', filletaway: 'Normal', flail: 'Normal', flash: 'Normal', focusenergy: 'Normal',
+  followme: 'Normal', foresight: 'Normal', frustration: 'Normal', furyattack: 'Normal', furyswipes: 'Normal',
+  gigaimpact: 'Normal', glare: 'Normal', gmaxcuddle: 'Normal', gmaxgoldrush: 'Normal', gmaxreplenish: 'Normal',
+  growl: 'Normal', growth: 'Normal', guillotine: 'Normal', happyhour: 'Normal', harden: 'Normal',
+  headbutt: 'Normal', headcharge: 'Normal', healbell: 'Normal', helpinghand: 'Normal', holdback: 'Normal',
+  holdhands: 'Normal', hornattack: 'Normal', horndrill: 'Normal', howl: 'Normal', hyperbeam: 'Normal',
+  hyperdrill: 'Normal', hyperfang: 'Normal', hypervoice: 'Normal', judgment: 'Normal', laserfocus: 'Normal',
+  lastresort: 'Normal', leer: 'Normal', lockon: 'Normal', lovelykiss: 'Normal', luckychant: 'Normal',
+  maxguard: 'Normal', maxstrike: 'Normal', meanlook: 'Normal', mefirst: 'Normal', megakick: 'Normal',
+  megapunch: 'Normal', metronome: 'Normal', milkdrink: 'Normal', mimic: 'Normal', mindreader: 'Normal',
+  minimize: 'Normal', morningsun: 'Normal', multiattack: 'Normal', naturalgift: 'Normal', naturepower: 'Normal',
+  nobleroar: 'Normal', odorsleuth: 'Normal', painsplit: 'Normal', payday: 'Normal', perishsong: 'Normal',
+  playnice: 'Normal', populationbomb: 'Normal', pound: 'Normal', powershift: 'Normal', present: 'Normal',
+  protect: 'Normal', psychup: 'Normal', pulverizingpancake: 'Normal', quickattack: 'Normal', rage: 'Normal',
+  ragingbull: 'Normal', rapidspin: 'Normal', razorwind: 'Normal', recover: 'Normal', recycle: 'Normal',
+  reflecttype: 'Normal', refresh: 'Normal', relicsong: 'Normal', retaliate: 'Normal', return: 'Normal',
+  revelationdance: 'Normal', revivalblessing: 'Normal', roar: 'Normal', rockclimb: 'Normal', round: 'Normal',
+  safeguard: 'Normal', scaryface: 'Normal', scratch: 'Normal', screech: 'Normal', secretpower: 'Normal',
+  selfdestruct: 'Normal', sharpen: 'Normal', shedtail: 'Normal', shellsmash: 'Normal', simplebeam: 'Normal',
+  sing: 'Normal', sketch: 'Normal', skullbash: 'Normal', slackoff: 'Normal', slam: 'Normal',
+  slash: 'Normal', sleeptalk: 'Normal', smellingsalts: 'Normal', smokescreen: 'Normal', snore: 'Normal',
+  softboiled: 'Normal', sonicboom: 'Normal', spikecannon: 'Normal', spitup: 'Normal', splash: 'Normal',
+  spotlight: 'Normal', stockpile: 'Normal', stomp: 'Normal', strength: 'Normal', struggle: 'Normal',
+  stuffcheeks: 'Normal', substitute: 'Normal', superfang: 'Normal', supersonic: 'Normal', swagger: 'Normal',
+  swallow: 'Normal', sweetscent: 'Normal', swift: 'Normal', swordsdance: 'Normal', tackle: 'Normal',
+  tailslap: 'Normal', tailwhip: 'Normal', takedown: 'Normal', tearfullook: 'Normal', teatime: 'Normal',
+  technoblast: 'Normal', teeterdance: 'Normal', terablast: 'Normal', terastarstorm: 'Normal', terrainpulse: 'Normal',
+  thrash: 'Normal', tickle: 'Normal', tidyup: 'Normal', transform: 'Normal', triattack: 'Normal',
+  trumpcard: 'Normal', uproar: 'Normal', veeveevolley: 'Normal', visegrip: 'Normal', weatherball: 'Normal',
+  whirlwind: 'Normal', wish: 'Normal', workup: 'Normal', wrap: 'Normal', wringout: 'Normal',
+  yawn: 'Normal',
+  // Poison (36)
+  acid: 'Poison', acidarmor: 'Poison', aciddownpour: 'Poison', acidspray: 'Poison', banefulbunker: 'Poison',
+  barbbarrage: 'Poison', belch: 'Poison', clearsmog: 'Poison', coil: 'Poison', corrosivegas: 'Poison',
+  crosspoison: 'Poison', direclaw: 'Poison', gastroacid: 'Poison', gmaxmalodor: 'Poison', gunkshot: 'Poison',
+  malignantchain: 'Poison', maxooze: 'Poison', mortalspin: 'Poison', noxioustorque: 'Poison', poisonfang: 'Poison',
+  poisongas: 'Poison', poisonjab: 'Poison', poisonpowder: 'Poison', poisonsting: 'Poison', poisontail: 'Poison',
+  purify: 'Poison', shellsidearm: 'Poison', sludge: 'Poison', sludgebomb: 'Poison', sludgewave: 'Poison',
+  smog: 'Poison', toxic: 'Poison', toxicspikes: 'Poison', toxicthread: 'Poison', venomdrench: 'Poison',
+  venoshock: 'Poison',
+  // Psychic (79)
+  agility: 'Psychic', allyswitch: 'Psychic', amnesia: 'Psychic', barrier: 'Psychic', calmmind: 'Psychic',
+  confusion: 'Psychic', cosmicpower: 'Psychic', dreameater: 'Psychic', eeriespell: 'Psychic', esperwing: 'Psychic',
+  expandingforce: 'Psychic', extrasensory: 'Psychic', freezingglare: 'Psychic', futuresight: 'Psychic', genesissupernova: 'Psychic',
+  glitzyglow: 'Psychic', gmaxgravitas: 'Psychic', gravity: 'Psychic', guardsplit: 'Psychic', guardswap: 'Psychic',
+  healblock: 'Psychic', healingwish: 'Psychic', healpulse: 'Psychic', heartstamp: 'Psychic', heartswap: 'Psychic',
+  hyperspacehole: 'Psychic', hypnosis: 'Psychic', imprison: 'Psychic', instruct: 'Psychic', kinesis: 'Psychic',
+  lightscreen: 'Psychic', lightthatburnsthesky: 'Psychic', luminacrash: 'Psychic', lunarblessing: 'Psychic', lunardance: 'Psychic',
+  lusterpurge: 'Psychic', magiccoat: 'Psychic', magicpowder: 'Psychic', magicroom: 'Psychic', maxmindstorm: 'Psychic',
+  meditate: 'Psychic', miracleeye: 'Psychic', mirrorcoat: 'Psychic', mistball: 'Psychic', mysticalpower: 'Psychic',
+  photongeyser: 'Psychic', powersplit: 'Psychic', powerswap: 'Psychic', powertrick: 'Psychic', prismaticlaser: 'Psychic',
+  psybeam: 'Psychic', psyblade: 'Psychic', psychic: 'Psychic', psychicfangs: 'Psychic', psychicnoise: 'Psychic',
+  psychicterrain: 'Psychic', psychoboost: 'Psychic', psychocut: 'Psychic', psychoshift: 'Psychic', psyshieldbash: 'Psychic',
+  psyshock: 'Psychic', psystrike: 'Psychic', psywave: 'Psychic', reflect: 'Psychic', rest: 'Psychic',
+  roleplay: 'Psychic', shatteredpsyche: 'Psychic', skillswap: 'Psychic', speedswap: 'Psychic', storedpower: 'Psychic',
+  synchronoise: 'Psychic', takeheart: 'Psychic', telekinesis: 'Psychic', teleport: 'Psychic', trick: 'Psychic',
+  trickroom: 'Psychic', twinbeam: 'Psychic', wonderroom: 'Psychic', zenheadbutt: 'Psychic',
+  // Rock (26)
+  accelerock: 'Rock', ancientpower: 'Rock', continentalcrush: 'Rock', diamondstorm: 'Rock', gmaxvolcalith: 'Rock',
+  headsmash: 'Rock', maxrockfall: 'Rock', meteorbeam: 'Rock', mightycleave: 'Rock', powergem: 'Rock',
+  rockblast: 'Rock', rockpolish: 'Rock', rockslide: 'Rock', rockthrow: 'Rock', rocktomb: 'Rock',
+  rockwrecker: 'Rock', rollout: 'Rock', saltcure: 'Rock', sandstorm: 'Rock', smackdown: 'Rock',
+  splinteredstormshards: 'Rock', stealthrock: 'Rock', stoneaxe: 'Rock', stoneedge: 'Rock', tarshot: 'Rock',
+  wideguard: 'Rock',
+  // Steel (39)
+  anchorshot: 'Steel', autotomize: 'Steel', behemothbash: 'Steel', behemothblade: 'Steel', bulletpunch: 'Steel',
+  corkscrewcrash: 'Steel', doomdesire: 'Steel', doubleironbash: 'Steel', flashcannon: 'Steel', geargrind: 'Steel',
+  gearup: 'Steel', gigatonhammer: 'Steel', gmaxmeltdown: 'Steel', gmaxsteelsurge: 'Steel', gyroball: 'Steel',
+  hardpress: 'Steel', heavyslam: 'Steel', irondefense: 'Steel', ironhead: 'Steel', irontail: 'Steel',
+  kingsshield: 'Steel', magnetbomb: 'Steel', makeitrain: 'Steel', maxsteelspike: 'Steel', metalburst: 'Steel',
+  metalclaw: 'Steel', metalsound: 'Steel', meteormash: 'Steel', mirrorshot: 'Steel', searingsunrazesmash: 'Steel',
+  shelter: 'Steel', shiftgear: 'Steel', smartstrike: 'Steel', spinout: 'Steel', steelbeam: 'Steel',
+  steelroller: 'Steel', steelwing: 'Steel', sunsteelstrike: 'Steel', tachyoncutter: 'Steel',
+  // Water (54)
+  aquacutter: 'Water', aquajet: 'Water', aquaring: 'Water', aquastep: 'Water', aquatail: 'Water',
+  bouncybubble: 'Water', brine: 'Water', bubble: 'Water', bubblebeam: 'Water', chillingwater: 'Water',
+  clamp: 'Water', crabhammer: 'Water', dive: 'Water', fishiousrend: 'Water', flipturn: 'Water',
+  gmaxcannonade: 'Water', gmaxfoamburst: 'Water', gmaxhydrosnipe: 'Water', gmaxrapidflow: 'Water', gmaxstonesurge: 'Water',
+  hiddenpower: 'Water', hydrocannon: 'Water', hydropump: 'Water', hydrosteam: 'Water', hydrovortex: 'Water',
+  jetpunch: 'Water', lifedew: 'Water', liquidation: 'Water', maxgeyser: 'Water', muddywater: 'Water',
+  oceanicoperetta: 'Water', octazooka: 'Water', originpulse: 'Water', raindance: 'Water', razorshell: 'Water',
+  scald: 'Water', snipeshot: 'Water', soak: 'Water', sparklingaria: 'Water', splishysplash: 'Water',
+  steameruption: 'Water', surf: 'Water', surgingstrikes: 'Water', tripledive: 'Water', waterfall: 'Water',
+  watergun: 'Water', waterpledge: 'Water', waterpulse: 'Water', watershuriken: 'Water', watersport: 'Water',
+  waterspout: 'Water', wavecrash: 'Water', whirlpool: 'Water', withdraw: 'Water',
+};
+
+/** Physical moves — auto-generated from @pkmn/sim (423 moves) */
+const PHYSICAL_MOVES = new Set([
+  'accelerock', 'aciddownpour', 'acrobatics', 'aerialace', 'alloutpummeling', 'anchorshot',
+  'aquacutter', 'aquajet', 'aquastep', 'aquatail', 'armthrust', 'assurance',
+  'astonish', 'attackorder', 'aurawheel', 'avalanche', 'axekick', 'barbbarrage',
+  'barrage', 'beakblast', 'beatup', 'behemothbash', 'behemothblade', 'bide',
+  'bind', 'bite', 'bitterblade', 'blackholeeclipse', 'blazekick', 'blazingtorque',
+  'bloomdoom', 'bodypress', 'bodyslam', 'boltbeak', 'boltstrike', 'boneclub',
+  'bonemerang', 'bonerush', 'bounce', 'branchpoke', 'bravebird', 'breakingswipe',
+  'breakneckblitz', 'brickbreak', 'brutalswing', 'bugbite', 'bulldoze', 'bulletpunch',
+  'bulletseed', 'catastropika', 'ceaselessedge', 'chipaway', 'circlethrow', 'clamp',
+  'closecombat', 'collisioncourse', 'combattorque', 'cometpunch', 'comeuppance', 'constrict',
+  'continentalcrush', 'corkscrewcrash', 'counter', 'covet', 'crabhammer', 'crosschop',
+  'crosspoison', 'crunch', 'crushclaw', 'crushgrip', 'cut', 'darkestlariat',
+  'devastatingdrake', 'diamondstorm', 'dig', 'direclaw', 'dive', 'dizzypunch',
+  'doubleedge', 'doublehit', 'doubleironbash', 'doublekick', 'doubleshock', 'doubleslap',
+  'dragonascent', 'dragonclaw', 'dragondarts', 'dragonhammer', 'dragonrush', 'dragontail',
+  'drainpunch', 'drillpeck', 'drillrun', 'drumbeating', 'dualchop', 'dualwingbeat',
+  'dynamicpunch', 'earthquake', 'eggbomb', 'endeavor', 'explosion', 'extremespeed',
+  'facade', 'fakeout', 'falsesurrender', 'falseswipe', 'feint', 'feintattack',
+  'fellstinger', 'firefang', 'firelash', 'firepunch', 'firstimpression', 'fishiousrend',
+  'fissure', 'flail', 'flamecharge', 'flamewheel', 'flareblitz', 'fling',
+  'flipturn', 'floatyfall', 'flowertrick', 'fly', 'flyingpress', 'focuspunch',
+  'forcepalm', 'foulplay', 'freezeshock', 'frustration', 'furyattack', 'furycutter',
+  'furyswipes', 'fusionbolt', 'geargrind', 'gigaimpact', 'gigatonhammer', 'gigavolthavoc',
+  'glaciallance', 'glaiverush', 'gmaxbefuddle', 'gmaxcannonade', 'gmaxcentiferno', 'gmaxchistrike',
+  'gmaxcuddle', 'gmaxdepletion', 'gmaxdrumsolo', 'gmaxfinale', 'gmaxfireball', 'gmaxfoamburst',
+  'gmaxgoldrush', 'gmaxgravitas', 'gmaxhydrosnipe', 'gmaxmalodor', 'gmaxmeltdown', 'gmaxoneblow',
+  'gmaxrapidflow', 'gmaxreplenish', 'gmaxresonance', 'gmaxsandblast', 'gmaxsmite', 'gmaxsnooze',
+  'gmaxsteelsurge', 'gmaxstonesurge', 'gmaxstunshock', 'gmaxsweetness', 'gmaxtartness', 'gmaxterror',
+  'gmaxvinelash', 'gmaxvolcalith', 'gmaxvoltcrash', 'gmaxwildfire', 'gmaxwindrage', 'grassyglide',
+  'gravapple', 'guillotine', 'gunkshot', 'gyroball', 'hammerarm', 'hardpress',
+  'headbutt', 'headcharge', 'headlongrush', 'headsmash', 'heartstamp', 'heatcrash',
+  'heavyslam', 'highhorsepower', 'highjumpkick', 'holdback', 'hornattack', 'horndrill',
+  'hornleech', 'hydrovortex', 'hyperdrill', 'hyperfang', 'hyperspacefury', 'iceball',
+  'icefang', 'icehammer', 'icepunch', 'iceshard', 'icespinner', 'iciclecrash',
+  'iciclespear', 'infernooverdrive', 'ironhead', 'irontail', 'ivycudgel', 'jawlock',
+  'jetpunch', 'jumpkick', 'karatechop', 'knockoff', 'kowtowcleave', 'landswrath',
+  'lashout', 'lastresort', 'lastrespects', 'leafage', 'leafblade', 'leechlife',
+  'letssnuggleforever', 'lick', 'liquidation', 'lowkick', 'lowsweep', 'lunge',
+  'machpunch', 'magicaltorque', 'magnetbomb', 'magnitude', 'maliciousmoonsault', 'maxairstream',
+  'maxdarkness', 'maxflare', 'maxflutterby', 'maxgeyser', 'maxhailstorm', 'maxknuckle',
+  'maxlightning', 'maxmindstorm', 'maxooze', 'maxovergrowth', 'maxphantasm', 'maxquake',
+  'maxrockfall', 'maxstarfall', 'maxsteelspike', 'maxstrike', 'maxwyrmwind', 'megahorn',
+  'megakick', 'megapunch', 'metalburst', 'metalclaw', 'meteorassault', 'meteormash',
+  'mightycleave', 'mortalspin', 'mountaingale', 'multiattack', 'naturalgift', 'needlearm',
+  'neverendingnightmare', 'nightslash', 'noxioustorque', 'nuzzle', 'orderup', 'outrage',
+  'payback', 'payday', 'peck', 'petalblizzard', 'phantomforce', 'pinmissile',
+  'plasmafists', 'playrough', 'pluck', 'poisonfang', 'poisonjab', 'poisonsting',
+  'poisontail', 'poltergeist', 'populationbomb', 'pounce', 'pound', 'powertrip',
+  'poweruppunch', 'powerwhip', 'precipiceblades', 'present', 'psyblade', 'psychicfangs',
+  'psychocut', 'psyshieldbash', 'pulverizingpancake', 'punishment', 'pursuit', 'pyroball',
+  'quickattack', 'rage', 'ragefist', 'ragingbull', 'ragingfury', 'rapidspin',
+  'razorleaf', 'razorshell', 'retaliate', 'return', 'revenge', 'reversal',
+  'rockblast', 'rockclimb', 'rockslide', 'rocksmash', 'rockthrow', 'rocktomb',
+  'rockwrecker', 'rollingkick', 'rollout', 'sacredfire', 'sacredsword', 'saltcure',
+  'sandtomb', 'sappyseed', 'savagespinout', 'scaleshot', 'scratch', 'searingsunrazesmash',
+  'secretpower', 'seedbomb', 'seismictoss', 'selfdestruct', 'shadowbone', 'shadowclaw',
+  'shadowforce', 'shadowpunch', 'shadowsneak', 'shatteredpsyche', 'sinisterarrowraid', 'sizzlyslide',
+  'skittersmack', 'skullbash', 'skyattack', 'skydrop', 'skyuppercut', 'slam',
+  'slash', 'smackdown', 'smartstrike', 'smellingsalts', 'snaptrap', 'solarblade',
+  'soulstealing7starstrike', 'spark', 'spectralthief', 'spikecannon', 'spinout', 'spiritbreak',
+  'spiritshackle', 'splinteredstormshards', 'steamroller', 'steelroller', 'steelwing', 'stomp',
+  'stompingtantrum', 'stoneaxe', 'stoneedge', 'stormthrow', 'strength', 'struggle',
+  'submission', 'suckerpunch', 'sunsteelstrike', 'supercellslam', 'superfang', 'superpower',
+  'surgingstrikes', 'tackle', 'tailslap', 'takedown', 'temperflare', 'thief',
+  'thousandarrows', 'thousandwaves', 'thrash', 'throatchop', 'thunderfang', 'thunderouskick',
+  'thunderpunch', 'trailblaze', 'tripleaxel', 'tripledive', 'triplekick', 'tropkick',
+  'twineedle', 'upperhand', 'uturn', 'vcreate', 'vinewhip', 'vitalthrow',
+  'volttackle', 'wakeupslap', 'waterfall', 'wavecrash', 'wickedblow', 'wickedtorque',
+  'wildcharge', 'woodhammer', 'wrap', 'xscissor', 'zenheadbutt', 'zingzap', 'zippyzap',
+]);
+
+const STATUS_MOVES = new Set([
+  'acidarmor', 'acupressure', 'afteryou', 'agility', 'allyswitch', 'amnesia',
+  'aquaring', 'aromatherapy', 'aromaticmist', 'assist', 'attract', 'auroraveil',
+  'autotomize', 'babydolleyes', 'banefulbunker', 'barrier', 'batonpass', 'bellydrum',
+  'bestow', 'block', 'bulkup', 'burningbulwark', 'calmmind', 'camouflage',
+  'captivate', 'celebrate', 'charge', 'charm', 'chillyreception', 'clangoroussoul',
+  'coaching', 'coil', 'confide', 'confuseray', 'conversion', 'conversion2',
+  'copycat', 'corrosivegas', 'cosmicpower', 'cottonguard', 'cottonspore', 'courtchange',
+  'craftyshield', 'curse', 'darkvoid', 'decorate', 'defendorder', 'defensecurl',
+  'defog', 'destinybond', 'detect', 'disable', 'doodle', 'doubleteam',
+  'dragoncheer', 'dragondance', 'eerieimpulse', 'electricterrain', 'electrify', 'embargo',
+  'encore', 'endure', 'entrainment', 'extremeevoboost', 'fairylock', 'faketears',
+  'featherdance', 'filletaway', 'flash', 'flatter', 'floralhealing', 'flowershield',
+  'focusenergy', 'followme', 'foresight', 'forestscurse', 'gastroacid', 'gearup',
+  'geomancy', 'glare', 'grasswhistle', 'grassyterrain', 'gravity', 'growl',
+  'growth', 'grudge', 'guardsplit', 'guardswap', 'hail', 'happyhour',
+  'harden', 'haze', 'healbell', 'healblock', 'healingwish', 'healorder',
+  'healpulse', 'heartswap', 'helpinghand', 'holdhands', 'honeclaws', 'howl',
+  'hypnosis', 'imprison', 'ingrain', 'instruct', 'iondeluge', 'irondefense',
+  'junglehealing', 'kinesis', 'kingsshield', 'laserfocus', 'leechseed', 'leer',
+  'lifedew', 'lightscreen', 'lockon', 'lovelykiss', 'luckychant', 'lunarblessing',
+  'lunardance', 'magiccoat', 'magicpowder', 'magicroom', 'magneticflux', 'magnetrise',
+  'matblock', 'maxguard', 'meanlook', 'meditate', 'mefirst', 'memento',
+  'metalsound', 'metronome', 'milkdrink', 'mimic', 'mindreader', 'minimize',
+  'miracleeye', 'mirrormove', 'mist', 'mistyterrain', 'moonlight', 'morningsun',
+  'mudsport', 'nastyplot', 'naturepower', 'nightmare', 'nobleroar', 'noretreat',
+  'obstruct', 'octolock', 'odorsleuth', 'painsplit', 'partingshot', 'perishsong',
+  'playnice', 'poisongas', 'poisonpowder', 'powder', 'powershift', 'powersplit',
+  'powerswap', 'powertrick', 'protect', 'psychicterrain', 'psychoshift', 'psychup',
+  'purify', 'quash', 'quickguard', 'quiverdance', 'ragepowder', 'raindance',
+  'recover', 'recycle', 'reflect', 'reflecttype', 'refresh', 'rest',
+  'revivalblessing', 'roar', 'rockpolish', 'roleplay', 'roost', 'rototiller',
+  'safeguard', 'sandattack', 'sandstorm', 'scaryface', 'screech', 'sharpen',
+  'shedtail', 'shellsmash', 'shelter', 'shiftgear', 'shoreup', 'silktrap',
+  'simplebeam', 'sing', 'sketch', 'skillswap', 'slackoff', 'sleeppowder',
+  'sleeptalk', 'smokescreen', 'snatch', 'snowscape', 'soak', 'softboiled',
+  'speedswap', 'spicyextract', 'spiderweb', 'spikes', 'spikyshield', 'spite',
+  'splash', 'spore', 'spotlight', 'stealthrock', 'stickyweb', 'stockpile',
+  'strengthsap', 'stringshot', 'stuffcheeks', 'stunspore', 'substitute', 'sunnyday',
+  'supersonic', 'swagger', 'swallow', 'sweetkiss', 'sweetscent', 'switcheroo',
+  'swordsdance', 'synthesis', 'tailglow', 'tailwhip', 'tailwind', 'takeheart',
+  'tarshot', 'taunt', 'tearfullook', 'teatime', 'teeterdance', 'telekinesis',
+  'teleport', 'thunderwave', 'tickle', 'tidyup', 'topsyturvy', 'torment',
+  'toxic', 'toxicspikes', 'toxicthread', 'transform', 'trick', 'trickortreat',
+  'trickroom', 'venomdrench', 'victorydance', 'watersport', 'whirlwind', 'wideguard',
+  'willowisp', 'wish', 'withdraw', 'wonderroom', 'workup', 'worryseed',
+  'yawn',
+]);
+
+/** Per-move shape overrides from Showdown animation analysis (379 moves) */
+const MOVE_SHAPE_OVERRIDES: Record<string, EffectShape> = {
+  // aura
+  acidarmor: 'aura', aerialace: 'aura', aircutter: 'aura', airslash: 'aura', attract: 'aura',
+  aurasphere: 'aura', autotomize: 'aura', avalanche: 'aura', barbbarrage: 'aura', batonpass: 'aura',
+  blackholeeclipse: 'aura', bodyslam: 'aura', boneclub: 'aura', bounce: 'aura', bulkup: 'aura',
+  burningbulwark: 'aura', burnup: 'aura', circlethrow: 'aura', clearsmog: 'aura', cosmicpower: 'aura',
+  covet: 'aura', dazzlinggleam: 'aura', dig: 'aura', dragonbreath: 'aura', dragoncheer: 'aura',
+  dragondance: 'aura', drillrun: 'aura', electroweb: 'aura', embargo: 'aura', esperwing: 'aura',
+  extremespeed: 'aura', featherdance: 'aura', finalgambit: 'aura', flash: 'aura', flashcannon: 'aura',
+  followme: 'aura', freezingglare: 'aura', geargrind: 'aura', gigatonhammer: 'aura', glaciallance: 'aura',
+  gunkshot: 'aura', hammerarm: 'aura', healblock: 'aura', healingwish: 'aura', heartstamp: 'aura',
+  heavyslam: 'aura', hex: 'aura', hurricane: 'aura', icebeam: 'aura', icehammer: 'aura',
+  icywind: 'aura', instruct: 'aura', judgment: 'aura', lovelykiss: 'aura', lusterpurge: 'aura',
+  magnetrise: 'aura', megahorn: 'aura', meteormash: 'aura', metronome: 'aura', mistball: 'aura',
+  moonlight: 'aura', morningsun: 'aura', mortalspin: 'aura', nastyplot: 'aura', neverendingnightmare: 'aura',
+  ominouswind: 'aura', outrage: 'aura', painsplit: 'aura', petalblizzard: 'aura', petaldance: 'aura',
+  poisonfang: 'aura', poisongas: 'aura', poisonjab: 'aura', powertrip: 'aura', psychicnoise: 'aura',
+  psychocut: 'aura', psyshock: 'aura', psystrike: 'aura', quiverdance: 'aura', ragingfury: 'aura',
+  rest: 'aura', revivalblessing: 'aura', roost: 'aura', saltcure: 'aura', scald: 'aura',
+  seedflare: 'aura', seismictoss: 'aura', shadowball: 'aura', shadowbone: 'aura', shadowforce: 'aura',
+  shadowpunch: 'aura', skillswap: 'aura', skyuppercut: 'aura', sludge: 'aura', sludgebomb: 'aura',
+  sludgewave: 'aura', smellingsalts: 'aura', smog: 'aura', spectralthief: 'aura', spite: 'aura',
+  splinteredstormshards: 'aura', spore: 'aura', spotlight: 'aura', steameruption: 'aura', stickyweb: 'aura',
+  stomp: 'aura', storedpower: 'aura', swagger: 'aura', swift: 'aura', taunt: 'aura',
+  topsyturvy: 'aura', toxic: 'aura', triplearrows: 'aura', tropkick: 'aura', whirlwind: 'aura', wish: 'aura',
+  // beam
+  thunder: 'beam', thunderbolt: 'beam', thundercage: 'beam', thunderouskick: 'beam',
+  // burst
+  alloutpummeling: 'burst', aquastep: 'burst', bulletpunch: 'burst', closecombat: 'burst',
+  doublekick: 'burst', focuspunch: 'burst', highjumpkick: 'burst', hyperspacefury: 'burst',
+  lowkick: 'burst', machpunch: 'burst', return: 'burst', thrash: 'burst',
+  vacuumwave: 'burst', wickedblow: 'burst',
+  // orb
+  aciddownpour: 'orb', aeroblast: 'orb', anchorshot: 'orb', aquaring: 'orb', armorcannon: 'orb',
+  astralbarrage: 'orb', banefulbunker: 'orb', beakblast: 'orb', bestow: 'orb', bind: 'orb',
+  bitterblade: 'orb', blastburn: 'orb', blazekick: 'orb', blueflare: 'orb', boltstrike: 'orb',
+  boomburst: 'orb', brutalswing: 'orb', bubblebeam: 'orb', bugbuzz: 'orb', bulletseed: 'orb',
+  calmmind: 'orb', catastropika: 'orb', chargebeam: 'orb', chloroblast: 'orb', clangingscales: 'orb',
+  clangoroussoulblaze: 'orb', coil: 'orb', confuseray: 'orb', continentalcrush: 'orb', coreenforcer: 'orb',
+  corkscrewcrash: 'orb', darkpulse: 'orb', darkvoid: 'orb', diamondstorm: 'orb', discharge: 'orb',
+  dracometeor: 'orb', dragonascent: 'orb', dragonenergy: 'orb', dragonpulse: 'orb', drainingkiss: 'orb',
+  drainpunch: 'orb', dynamicpunch: 'orb', electroball: 'orb', electroshot: 'orb', endeavor: 'orb',
+  energyball: 'orb', eruption: 'orb', explosion: 'orb', extremeevoboost: 'orb', fierywrath: 'orb',
+  fireblast: 'orb', firefang: 'orb', firelash: 'orb', firepunch: 'orb', firespin: 'orb',
+  firstimpression: 'orb', flamecharge: 'orb', flamethrower: 'orb', flareblitz: 'orb', fling: 'orb',
+  flowertrick: 'orb', focusblast: 'orb', forestscurse: 'orb', freezeshock: 'orb', fusionbolt: 'orb',
+  geomancy: 'orb', gigavolthavoc: 'orb', gmaxsteelsurge: 'orb', grassknot: 'orb', guardianofalola: 'orb',
+  hardpress: 'orb', healpulse: 'orb', hiddenpower: 'orb', hornleech: 'orb', hyperbeam: 'orb',
+  hyperspacehole: 'orb', hypervoice: 'orb', hypnosis: 'orb', iceball: 'orb', iceburn: 'orb',
+  icespinner: 'orb', infernalparade: 'orb', infernooverdrive: 'orb', ironhead: 'orb', ivycudgel: 'orb',
+  lavaplume: 'orb', leafage: 'orb', leafblade: 'orb', leafstorm: 'orb', leechlife: 'orb',
+  leechseed: 'orb', lifedew: 'orb', lightofruin: 'orb', lunarblessing: 'orb', magmastorm: 'orb',
+  magnetbomb: 'orb', makeitrain: 'orb', malignantchain: 'orb', matchagotcha: 'orb', meteorbeam: 'orb',
+  mimic: 'orb', mindreader: 'orb', mistyexplosion: 'orb', moonblast: 'orb', moongeistbeam: 'orb',
+  mysticalpower: 'orb', naturesmadness: 'orb', oceanicoperetta: 'orb', overheat: 'orb', paraboliccharge: 'orb',
+  payday: 'orb', photongeyser: 'orb', plasmafists: 'orb', populationbomb: 'orb', powergem: 'orb',
+  powerwhip: 'orb', precipiceblades: 'orb', present: 'orb', prismaticlaser: 'orb', psybeam: 'orb',
+  psychoboost: 'orb', pulverizingpancake: 'orb', pursuit: 'orb', ragefist: 'orb', razorshell: 'orb',
+  refresh: 'orb', revelationdance: 'orb', roaroftime: 'orb', ruination: 'orb', sacredfire: 'orb',
+  sacredsword: 'orb', searingsunrazesmash: 'orb', seedbomb: 'orb', shelltrap: 'orb', shockwave: 'orb',
+  signalbeam: 'orb', simplebeam: 'orb', sinisterarrowraid: 'orb', snarl: 'orb', softboiled: 'orb',
+  solarbeam: 'orb', soulstealing7starstrike: 'orb', spacialrend: 'orb', spark: 'orb', spikecannon: 'orb',
+  spinout: 'orb', spiritbreak: 'orb', spiritshackle: 'orb', stokedsparksurfer: 'orb', sunsteelstrike: 'orb',
+  supercellslam: 'orb', supersonic: 'orb', supersonicskystrike: 'orb', switcheroo: 'orb', tailglow: 'orb',
+  tailwind: 'orb', takeheart: 'orb', technoblast: 'orb', temperflare: 'orb', terastarstorm: 'orb',
+  terrainpulse: 'orb', thousandarrows: 'orb', thousandwaves: 'orb', thunderclap: 'orb', thunderfang: 'orb',
+  thunderpunch: 'orb', thunderwave: 'orb', torchsong: 'orb', triattack: 'orb', trick: 'orb',
+  trickortreat: 'orb', twinbeam: 'orb', twineedle: 'orb', vcreate: 'orb', voltswitch: 'orb',
+  waterpulse: 'orb', weatherball: 'orb', wildcharge: 'orb', willowisp: 'orb', woodhammer: 'orb',
+  worryseed: 'orb', zapcannon: 'orb', zenheadbutt: 'orb',
+  // slash
+  bellydrum: 'slash', block: 'slash', crosschop: 'slash', crosspoison: 'slash', fakeout: 'slash',
+  forcepalm: 'slash', furyswipes: 'slash', gigaimpact: 'slash', karatechop: 'slash', lockon: 'slash',
+  mightycleave: 'slash', multiattack: 'slash', nightslash: 'slash', psychicfangs: 'slash', quash: 'slash',
+  rockpolish: 'slash', secretsword: 'slash', smartstrike: 'slash', solarblade: 'slash', stompingtantrum: 'slash',
+  swordsdance: 'slash', twinkletackle: 'slash', wakeupslap: 'slash', xscissor: 'slash',
+  // wave
+  aquacutter: 'wave', aquajet: 'wave', blizzard: 'wave', bulldoze: 'wave', crabhammer: 'wave',
+  dive: 'wave', earthpower: 'wave', earthquake: 'wave', electrodrift: 'wave', fishiousrend: 'wave',
+  flipturn: 'wave', freezedry: 'wave', icefang: 'wave', icepunch: 'wave', iceshard: 'wave',
+  iciclecrash: 'wave', iciclespear: 'wave', jetpunch: 'wave', letssnuggleforever: 'wave', mist: 'wave',
+  mudbomb: 'wave', muddywater: 'wave', mudshot: 'wave', originpulse: 'wave', playrough: 'wave',
+  rockslide: 'wave', sandsearstorm: 'wave', sandtomb: 'wave', sheercold: 'wave', splash: 'wave',
+  surf: 'wave', tachyoncutter: 'wave', tripleaxel: 'wave', watershuriken: 'wave', watersport: 'wave',
+  waterspout: 'wave', wavecrash: 'wave',
+};
+
+export function getMoveMeta(moveId: string): { type: string; category: string; shape?: EffectShape } {
+  const id = moveId.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const type = MOVE_TYPES[id] ?? 'Normal';
+  const category = STATUS_MOVES.has(id) ? 'Status' : PHYSICAL_MOVES.has(id) ? 'Physical' : 'Special';
+  const shape = MOVE_SHAPE_OVERRIDES[id];
+  return { type, category, shape };
+}

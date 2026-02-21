@@ -1,6 +1,8 @@
 import { writable, get } from 'svelte/store';
 import { socket } from './socket';
 import { user } from './auth';
+import { enqueueLines, resetAnimQueue } from './animQueue';
+import { preloadSprites, preloadFromLogLine } from '$lib/sprites';
 
 export interface BattlePokemon {
   ident: string;
@@ -8,11 +10,14 @@ export interface BattlePokemon {
   condition: string;
   active: boolean;
   stats: Record<string, number>;
-  moves: { move: string; id: string; pp: number; maxpp: number; target: string; disabled: boolean; type?: string }[];
+  moves: string[];
   ability: string;
   item: string;
   baseAbility: string;
   pokeball: string;
+  teraType?: string;
+  commanding?: boolean;
+  reviving?: boolean;
 }
 
 export interface BattleRequest {
@@ -62,6 +67,7 @@ export function initBattleListeners(): () => void {
     console.log('[battle] me=', me?.id, me?.username);
     const mySide = data.p1.id === me?.id ? 'p1' : 'p2';
     console.log('[battle] mySide=', mySide);
+    resetAnimQueue();
     battleState.set({
       battleId: data.battleId,
       format: data.format,
@@ -87,12 +93,24 @@ export function initBattleListeners(): () => void {
         if (line.startsWith('|turn|')) {
           turn = parseInt(line.split('|')[2]) || turn;
         }
+        // Preload sprites for any pokemon that switch in (especially opponent)
+        preloadFromLogLine(line);
       }
+      // Feed lines through animation queue for timed playback
+      enqueueLines(newLines, state.mySide);
+      // Also keep raw log for state parsing (opponent state, etc)
       return { ...state, log: [...state.log, ...newLines], turn };
     });
   };
 
   const onBattleRequest = (data: { battleId: string; request: BattleRequest }) => {
+    // Preload our team sprites as soon as we get the request
+    if (data.request?.side?.pokemon) {
+      const names = data.request.side.pokemon.map(
+        (p: BattlePokemon) => p.details?.split(',')[0]?.trim() ?? ''
+      ).filter(Boolean);
+      preloadSprites(names);
+    }
     battleState.update((state) => {
       if (!state || state.battleId !== data.battleId) return state;
       const waiting = !!data.request.wait;
