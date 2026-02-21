@@ -208,6 +208,18 @@ function _wireBattleEvents(io, room) {
     }
   });
 
+  // Choice error — player sent an invalid move, sim will resend request
+  room.on('choiceError', ({ side, message }) => {
+    const userId = side === 'p1' ? room.p1.id : room.p2.id;
+    const socketId = userSockets.get(userId);
+    if (socketId) {
+      io.to(socketId).emit('battleChoiceError', {
+        battleId: room.battleId,
+        message,
+      });
+    }
+  });
+
   // Battle end — broadcast to both players
   room.on('end', (result) => {
     io.to(room.battleId).emit('battleEnd', {

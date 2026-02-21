@@ -56,8 +56,13 @@ class PlayerAgent extends BattleStreams.BattlePlayer {
     } else if (line.startsWith('|error|')) {
       const msg = line.slice('|error|'.length);
       if (msg.startsWith('[Unavailable choice]') || msg.startsWith('[Invalid choice]')) {
-        // The sim auto-resends the request; just log it
-        console.warn(`[${this.side}] ${msg}`);
+        // The sim will auto-resend the request after this error.
+        // Emit the error so clients know their choice was rejected.
+        this.emitter.emit('choiceError', {
+          battleId: this.emitter.battleId,
+          side: this.side,
+          message: msg,
+        });
       } else {
         this.emitter.emit('playerError', { side: this.side, message: msg });
       }
