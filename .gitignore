@@ -1,0 +1,12 @@
+# Environment secrets - NEVER commit
+.env
+
+# Node
+node_modules/
+
+# Build output
+client/build/
+
+# Misc
+*.log
+.DS_Store
