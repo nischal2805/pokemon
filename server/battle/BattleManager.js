@@ -22,9 +22,13 @@ class BattleManager {
 
   /**
    * Create a challenge from one user to another.
+   * @param {object} challenger - { id, username }
+   * @param {string} targetId
+   * @param {string} format
+   * @param {string} [team] - Showdown paste for non-random formats
    * @returns {{ battleId: string }} The challenge/battle ID
    */
-  createChallenge(challenger, targetId, format) {
+  createChallenge(challenger, targetId, format, team) {
     if (!isValidFormat(format)) {
       throw new Error(`Invalid format: ${format}`);
     }
@@ -34,11 +38,17 @@ class BattleManager {
       throw new Error('You are already in a battle');
     }
 
+    // Non-random formats require a team
+    if (!isRandomFormat(format) && !team) {
+      throw new Error('You must select a team for this format');
+    }
+
     const battleId = uuidv4();
     this.challenges.set(battleId, {
       challenger, // { id, username }
       targetId,
       format,
+      challengerTeam: team || null,
       createdAt: Date.now(),
     });
 
@@ -54,9 +64,12 @@ class BattleManager {
 
   /**
    * Accept a challenge and start the battle.
+   * @param {string} battleId
+   * @param {object} accepter - { id, username }
+   * @param {string} [team] - Showdown paste for non-random formats
    * @returns {BattleRoom} The battle room instance
    */
-  acceptChallenge(battleId, accepter) {
+  acceptChallenge(battleId, accepter, team) {
     const challenge = this.challenges.get(battleId);
     if (!challenge) {
       throw new Error('Challenge not found or expired');
@@ -69,6 +82,11 @@ class BattleManager {
     // Check if accepter is already in a battle
     if (this.userBattles.has(accepter.id)) {
       throw new Error('You are already in a battle');
+    }
+
+    // Non-random formats require a team
+    if (!isRandomFormat(challenge.format) && !team) {
+      throw new Error('You must select a team for this format');
     }
 
     // Remove the challenge
@@ -93,6 +111,12 @@ class BattleManager {
 
     // Initialize the battle (starts sim streams)
     room.init();
+
+    // For non-random formats, submit both teams (this triggers _startBattle once both are in)
+    if (!isRandomFormat(challenge.format)) {
+      room.submitTeam('p1', challenge.challengerTeam);
+      room.submitTeam('p2', team);
+    }
 
     return room;
   }

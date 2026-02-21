@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pokeserver
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - '3001:3001'
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/pokeserver?schema=public
+      JWT_SECRET: super-secret-change-me-in-production
+      PORT: 3001
+      CLIENT_URL: http://localhost:5173
+      INVITE_CODE: ''
+      MAX_USERS: 20
+
+  client:
+    build: ./client
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - '5173:5173'
+    environment:
+      PUBLIC_SERVER_URL: http://localhost:3001
+
+volumes:
+  pgdata:

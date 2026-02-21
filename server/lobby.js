@@ -28,7 +28,7 @@ function setupLobby(io) {
 
     // === CHALLENGE EVENTS ===
 
-    socket.on('challenge', ({ targetUser, format }) => {
+    socket.on('challenge', ({ targetUser, format, team }) => {
       try {
         const targetSocketId = userSockets.get(targetUser);
         if (!targetSocketId) {
@@ -39,7 +39,7 @@ function setupLobby(io) {
           return socket.emit('error', { message: 'You cannot challenge yourself' });
         }
 
-        const { battleId } = battleManager.createChallenge(user, targetUser, format);
+        const { battleId } = battleManager.createChallenge(user, targetUser, format, team);
 
         // Notify the target
         io.to(targetSocketId).emit('challenged', {
@@ -56,13 +56,15 @@ function setupLobby(io) {
       }
     });
 
-    socket.on('accept', ({ battleId }) => {
+    socket.on('accept', ({ battleId, team }) => {
       try {
-        const room = battleManager.acceptChallenge(battleId, user);
+        const room = battleManager.acceptChallenge(battleId, user, team);
 
         // Both players join the socket room
         const p1SocketId = userSockets.get(room.p1.id);
         const p2SocketId = userSockets.get(room.p2.id);
+
+        console.log(`[Battle ${battleId}] p1=${room.p1.username} socket=${p1SocketId}, p2=${room.p2.username} socket=${p2SocketId}`);
 
         if (p1SocketId) io.sockets.sockets.get(p1SocketId)?.join(battleId);
         if (p2SocketId) io.sockets.sockets.get(p2SocketId)?.join(battleId);
@@ -71,12 +73,14 @@ function setupLobby(io) {
         _wireBattleEvents(io, room);
 
         // Notify both players
-        io.to(battleId).emit('battleStart', {
+        const payload = {
           battleId,
           format: room.format,
           p1: { id: room.p1.id, username: room.p1.username },
           p2: { id: room.p2.id, username: room.p2.username },
-        });
+        };
+        console.log(`[Battle ${battleId}] emitting battleStart to room`, payload);
+        io.to(battleId).emit('battleStart', payload);
       } catch (err) {
         socket.emit('error', { message: err.message });
       }
@@ -84,10 +88,11 @@ function setupLobby(io) {
 
     socket.on('decline', ({ battleId }) => {
       try {
+        // Read challenge BEFORE deleting it so we can notify the challenger
+        const challenge = battleManager.challenges.get(battleId);
         battleManager.declineChallenge(battleId, user.id);
 
         // Notify the challenger
-        const challenge = battleManager.challenges.get(battleId);
         if (challenge) {
           const challengerSocketId = userSockets.get(challenge.challenger.id);
           if (challengerSocketId) {
@@ -146,6 +151,21 @@ function setupLobby(io) {
       }
     });
 
+    // Team order during team preview (in-battle)
+    socket.on('teamOrder', ({ battleId, order }) => {
+      try {
+        const room = battleManager.getBattle(battleId);
+        if (!room) return socket.emit('error', { message: 'Battle not found' });
+
+        const side = battleManager.getUserSide(battleId, user.id);
+        if (!side) return socket.emit('error', { message: 'You are not in this battle' });
+
+        room.choose(side, order);
+      } catch (err) {
+        socket.emit('error', { message: err.message });
+      }
+    });
+
     socket.on('forfeit', ({ battleId }) => {
       try {
         const room = battleManager.getBattle(battleId);
@@ -188,6 +208,7 @@ function _wireBattleEvents(io, room) {
   room.on('update', ({ side, log }) => {
     const userId = side === 'p1' ? room.p1.id : room.p2.id;
     const socketId = userSockets.get(userId);
+    console.log(`[Battle ${room.battleId}] update for ${side} -> socket=${socketId}, log=${log.length} chars`);
     if (socketId) {
       io.to(socketId).emit('battleUpdate', {
         battleId: room.battleId,
@@ -200,6 +221,7 @@ function _wireBattleEvents(io, room) {
   room.on('request', ({ side, request }) => {
     const userId = side === 'p1' ? room.p1.id : room.p2.id;
     const socketId = userSockets.get(userId);
+    console.log(`[Battle ${room.battleId}] request for ${side} -> socket=${socketId}, teamPreview=${!!request.teamPreview}, forceSwitch=${!!request.forceSwitch}, wait=${!!request.wait}`);
     if (socketId) {
       io.to(socketId).emit('battleRequest', {
         battleId: room.battleId,

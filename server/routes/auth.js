@@ -56,7 +56,7 @@ router.post('/register', async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    res.json({ id: user.id, username: user.username });
+    res.json({ user: { id: user.id, username: user.username } });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -90,7 +90,7 @@ router.post('/login', async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ id: user.id, username: user.username });
+    res.json({ user: { id: user.id, username: user.username } });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -105,7 +105,7 @@ router.post('/logout', (req, res) => {
 
 // GET /api/auth/me
 router.get('/me', authMiddleware, (req, res) => {
-  res.json({ id: req.user.id, username: req.user.username });
+  res.json({ user: { id: req.user.id, username: req.user.username } });
 });
 
 module.exports = router;
