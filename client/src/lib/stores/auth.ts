@@ -32,7 +32,7 @@ export async function apiFetch(path: string, opts: RequestInit = {}): Promise<Re
 async function apiJson(path: string, opts: RequestInit = {}) {
   const res = await apiFetch(path, opts);
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Request failed');
+  if (!res.ok) throw new Error(data.message || data.error || 'Request failed');
   return data;
 }
 
