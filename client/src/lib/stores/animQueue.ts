@@ -26,7 +26,6 @@ export const animEvent = writable<{
 let queue: string[] = [];
 let playing = false;
 let skipMode = false;
-let playId = 0; // Monotonic ID to detect stale playQueue instances
 
 /** Get delay in ms for a given protocol line */
 function getDelay(line: string): number {
@@ -113,16 +112,8 @@ async function playQueue(mySide: string) {
   if (playing) return;
   playing = true;
   isAnimating.set(true);
-  const myId = ++playId; // Capture ID so we can detect if skipToEnd invalidated us
 
   while (queue.length > 0) {
-    // If skipToEnd was called, this instance is stale — bail out
-    if (myId !== playId) {
-      playing = false;
-      isAnimating.set(false);
-      return;
-    }
-
     const line = queue.shift()!;
     const parts = line.split('|');
     const cmd = parts[1];
@@ -157,16 +148,12 @@ async function playQueue(mySide: string) {
       if (remaining > 0) await sleep(remaining);
       if (anim) animEvent.set(null);
     }
-    // For move events: play sprite animation first, then show log text ~250ms later
-    // so the visual leads the text (matches how Showdown feels)
+    // For move events: show move animation, then the follow-up events handle impact
     else {
       if (anim) animEvent.set(anim);
-      const delay = getDelay(line);
-      const textDelay = (anim && cmd === 'move') ? Math.min(250, delay) : 0;
-      if (textDelay > 0) await sleep(textDelay);
       visibleLog.update(v => [...v, line]);
-      const remaining = delay - textDelay;
-      if (remaining > 0) await sleep(remaining);
+      const delay = getDelay(line);
+      if (delay > 0) await sleep(delay);
       if (anim) animEvent.set(null);
     }
   }
@@ -190,7 +177,6 @@ export function enqueueLines(lines: string[], mySide: string) {
 /** Skip to end — instantly show all remaining lines */
 export function skipToEnd() {
   skipMode = true;
-  playId++; // Invalidate any in-flight playQueue
   // Flush remaining queue immediately
   if (queue.length > 0) {
     visibleLog.update(v => [...v, ...queue]);
@@ -207,7 +193,6 @@ export function resetAnimQueue() {
   queue = [];
   playing = false;
   skipMode = false;
-  playId++; // Invalidate any in-flight playQueue
   visibleLog.set([]);
   isAnimating.set(false);
   animEvent.set(null);

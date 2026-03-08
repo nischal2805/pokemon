@@ -23,7 +23,6 @@ function toKey(name: string): string {
 /**
  * Look up the national dex number for a species name.
  * Tries the hyphenated form first (spriteid), then the squished id.
- * Also tries stripping forme suffixes so e.g. Garchomp-Mega shows Garchomp sprite.
  */
 function getDexNum(name: string): number | null {
   if (!name) return null;
@@ -39,15 +38,6 @@ function getDexNum(name: string): number | null {
   // Try with hyphens preserved but otherwise cleaned
   const hyphenKey = raw.replace(/[^a-z0-9-]/g, '');
   if (DEX[hyphenKey]) return DEX[hyphenKey];
-
-  // Try base forme — strip everything after first hyphen
-  // e.g. "Urshifu-Rapid-Strike" → "urshifu", "Wormadam-Sandy" → "wormadam"
-  const baseKey = raw.split('-')[0];
-  if (baseKey && DEX[baseKey]) return DEX[baseKey];
-
-  // Try stripping trailing forme word (handles mega/alola/galar/hisui)
-  const noForme = raw.replace(/-(mega|mega-x|mega-y|alola|alolan|galar|galarian|hisui|hisuian|paldea|paldean|crowned|eternamax|origin|sky|therian|black|white|sandy|trash|plant|heat|wash|frost|fan|mow|standard|zen|pirouette|ordinary|resolute|active|core|blade|10|50|complete|dusk|dawn|midnight|midday|original|totem|3|pa|la|ma|a|b|c|d)$/g, '');
-  if (DEX[noForme]) return DEX[noForme];
 
   return null;
 }
@@ -96,13 +86,12 @@ export function itemUrl(item: string): string {
 }
 
 /**
- * onerror handler for <img> tags — swap animated GIF for static PNG fallback.
- * Never hides the image entirely — shows a styled placeholder instead.
+ * onerror handler for <img> tags — swap animated GIF for static PNG fallback
  */
 export function onSpriteError(e: Event): void {
   const img = e.target as HTMLImageElement;
   const src = img.src;
-  // If it was a showdown GIF, try the static PNG
+  // If it was a GIF, try the static PNG
   if (src.includes('/other/showdown/')) {
     const match = src.match(/(\d+)\.gif$/);
     if (match) {
@@ -111,14 +100,8 @@ export function onSpriteError(e: Event): void {
       return;
     }
   }
-  // If it was a regular PNG that also failed, show a styled fallback
-  // (don't hide — a blank void looks like a bug)
-  img.style.opacity = '0.15';
-  img.style.filter = 'grayscale(1)';
-  // Try a generic silhouette: PokeAPI ditto sprite as universal fallback
-  if (!src.includes('/132.')) {
-    img.src = `${BASE}/132.png`;
-  }
+  // Otherwise hide it
+  img.style.display = 'none';
 }
 
 // ── Sprite Preloading ──

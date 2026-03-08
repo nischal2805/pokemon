@@ -98,24 +98,7 @@
     }
     if (line.startsWith('|-sideend|')) {
       const p = line.split('|');
-      return { html: `${p[3]} was cleared from ${nick(p[2])}'s side.`, cls: 'hazard' };
-    }
-    if (line.startsWith('|-fieldstart|')) {
-      const p = line.split('|');
-      const eff = (p[3] ?? p[2] ?? '').replace('move: ', '');
-      if (eff.includes('Trick Room'))  return { html: `⧉ <b>Trick Room</b> was twisted!`, cls: 'field' };
-      if (eff.includes('Magic Room'))  return { html: `🔮 <b>Magic Room</b> was created!`, cls: 'field' };
-      if (eff.includes('Wonder Room')) return { html: `✨ <b>Wonder Room</b> was created!`, cls: 'field' };
-      if (eff.includes('Gravity'))     return { html: `⬇ <b>Gravity</b> intensified!`, cls: 'field' };
-      if (eff.includes('Terrain'))     return { html: `🌐 <b>${eff}</b> appeared!`, cls: 'terrain' };
-      return { html: `${eff} appeared!`, cls: 'field' };
-    }
-    if (line.startsWith('|-fieldend|')) {
-      const p = line.split('|');
-      const eff = (p[3] ?? p[2] ?? '').replace('move: ', '');
-      if (eff.includes('Trick Room'))  return { html: `⧉ <b>Trick Room</b> ended.`, cls: 'field' };
-      if (eff.includes('Terrain'))     return { html: `🌐 <b>${eff}</b> faded.`, cls: 'terrain' };
-      return { html: `${eff} ended.`, cls: 'field' };
+      return { html: `${p[3]} was removed from ${nick(p[2])}'s side!`, cls: 'hazard' };
     }
     if (line.startsWith('|-activate|'))
       return { html: `${nick(line.split('|')[2])}'s ${line.split('|')[3]} activated!`, cls: 'ability' };
@@ -137,7 +120,6 @@
     if (line.startsWith('|-end|')) {
       const p = line.split('|');
       if ((p[3] ?? '').includes('confusion')) return { html: `<b>${nick(p[2])}</b> snapped out of confusion!`, cls: 'heal' };
-      if ((p[3] ?? '').includes('Substitute')) return { html: `<b>${nick(p[2])}</b>'s substitute broke!`, cls: 'miss' };
       return null;
     }
     if (line.startsWith('|cant|')) {
@@ -213,8 +195,6 @@
   .weather-cont { color: #475569; font-size: 0.85em; }
   .hazard { color: #a78bfa; }
   .mega { color: #f0abfc; font-weight: 600; }
-  .field { color: #c084fc; font-style: italic; }
-  .terrain { color: #6ee7b7; font-style: italic; }
   .error { color: #f87171; background: rgba(248, 113, 113, 0.1); padding: 2px 6px; border-radius: 4px; }
   .plain { color: #8892b0; }
 

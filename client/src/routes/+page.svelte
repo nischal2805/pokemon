@@ -46,14 +46,6 @@
   });
 
   // Reactively set up lobby socket listeners when socket becomes available
-  // Safety net: if battleState is set (battleStart was received by layout listener)
-  // but goto() didn't fire from socket listener, navigate reactively.
-  $effect(() => {
-    if ($battleState && !$battleState.ended) {
-      goto(`/battle/${$battleState.battleId}`);
-    }
-  });
-
   let lobbyCleanup: (() => void) | null = null;
 
   $effect(() => {

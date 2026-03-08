@@ -14,9 +14,6 @@ export function connectSocket() {
   const u = get(user);
   if (!u) return;
 
-  // Don't create a second socket if one already exists
-  if (get(socket)) return;
-
   const s = io(API || undefined, {
     withCredentials: true,
     auth: { token: document.cookie.replace(/(?:(?:^|.*;\s*)token\s*=\s*([^;]*).*$)|^.*$/, '$1') },
