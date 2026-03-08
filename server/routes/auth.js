@@ -6,10 +6,10 @@ const { signToken, authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Rate limit: 5 attempts per 15 minutes per IP+username for login/register
+// Rate limit: 20 attempts per 15 minutes per IP for login/register
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many attempts. Try again in 15 minutes.' },
