@@ -281,7 +281,42 @@
     return { active: activeOpp, team: [...seen.values()] };
   });
 
-  /* ── Animation state from animQueue ── */
+  /* ── Opponent fallback from raw state.log when visibleLog hasn't played initial switches yet ── */
+  let oppStateFinal = $derived.by(() => {
+    if (oppState.active !== null) return oppState;
+    // visibleLog is empty — scan state.log for the very first switch for opponent side
+    // (this covers the ~950ms gap before the switch animation plays)
+    const rawLog: string[] = state?.log ?? [];
+    const side = oppSide;
+    const prefix = `${side}a: `;
+    for (const line of rawLog) {
+      const parts = line.split('|');
+      if (parts[1] === 'switch' || parts[1] === 'drag') {
+        const ident = parts[2] ?? '';
+        if (!ident.startsWith(prefix) && !ident.startsWith(`${side}: `)) continue;
+        const name = ident.includes(': ') ? ident.split(': ')[1] : ident;
+        const details = parts[3] ?? '';
+        const condition = parts[4] ?? '100/100';
+        const levelMatch = details.match(/L(\d+)/);
+        return {
+          active: {
+            name,
+            species: details.split(',')[0].trim() || name,
+            level: levelMatch ? parseInt(levelMatch[1]) : 100,
+            hp: condition.split(' ')[0] || condition,
+            hpPercent: parseHPPercent(condition),
+            fainted: condition.includes('fnt'),
+            active: true,
+            status: '',
+            item: '',
+            hasSubstitute: false,
+          },
+          team: oppState.team,
+        };
+      }
+    }
+    return oppState;
+  });
   let mySpriteClass = $derived.by(() => {
     const ev = $animEvent;
     if (!ev) return 'anim-idle';
@@ -392,32 +427,32 @@
       <div class="flex items-center gap-2 mb-1">
         <span class="text-xs font-bold text-white/90 tracking-wide">{oppUsername ?? 'Opponent'}</span>
       </div>
-      {#if oppState.active}
+      {#if oppStateFinal.active}
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="font-bold text-sm text-white">{oppState.active.species}</span>
-          <span class="text-[10px] text-white/50 font-medium">Lv{oppState.active.level}</span>
-          {#if oppState.active.status}
-            <span class="status-badge status-{oppState.active.status}">{oppState.active.status.toUpperCase()}</span>
+          <span class="font-bold text-sm text-white">{oppStateFinal.active.species}</span>
+          <span class="text-[10px] text-white/50 font-medium">Lv{oppStateFinal.active.level}</span>
+          {#if oppStateFinal.active.status}
+            <span class="status-badge status-{oppStateFinal.active.status}">{oppStateFinal.active.status.toUpperCase()}</span>
           {/if}
         </div>
         <div class="mt-1 w-40">
-          <HPBar percent={oppState.active.hpPercent} size="md" showText={true} />
+          <HPBar percent={oppStateFinal.active.hpPercent} size="md" showText={true} />
         </div>
-        {#if oppState.active.item}
+        {#if oppStateFinal.active.item}
           <div class="flex items-center gap-1 mt-1 text-[10px] text-yellow-300/80">
-            <img src={itemUrl(oppState.active.item)} alt="" class="w-4 h-4" onerror={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
-            <span>{oppState.active.item}</span>
+            <img src={itemUrl(oppStateFinal.active.item)} alt="" class="w-4 h-4" onerror={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
+            <span>{oppStateFinal.active.item}</span>
           </div>
         {/if}
       {/if}
       <!-- Opp team pokeballs -->
       <div class="flex gap-1.5 mt-2">
-        {#each oppState.team as opp}
+        {#each oppStateFinal.team as opp}
           <div class="pokeball {opp.fainted ? 'fainted' : ''}"
             title="{opp.name}{opp.status ? ' [' + opp.status.toUpperCase() + ']' : ''} ({opp.fainted ? 'fainted' : opp.hp})"
           ></div>
         {/each}
-        {#each Array(Math.max(0, 6 - oppState.team.length)) as _}
+        {#each Array(Math.max(0, 6 - oppStateFinal.team.length)) as _}
           <div class="pokeball" title="Unknown"></div>
         {/each}
       </div>
@@ -426,21 +461,21 @@
 
   <!-- ── Opponent sprite (top-right) ── -->
   <div class="absolute z-10 opp-sprite-area flex flex-col items-center">
-    {#if oppState.active && !oppState.active.fainted}
+    {#if oppStateFinal.active && !oppStateFinal.active.fainted}
       <div class={oppSpriteClass} style="position:relative;">
-        {#if oppState.active.hasSubstitute}
+        {#if oppStateFinal.active.hasSubstitute}
           <div class="substitute-doll substitute-doll-opp" title="Substitute">🪆</div>
         {/if}
         <img
-          src={spriteUrl(oppState.active.species)}
-          alt={oppState.active.species}
-          class="sprite-front drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)] {oppState.active.hasSubstitute ? 'behind-sub' : ''}"
+          src={spriteUrl(oppStateFinal.active.species)}
+          alt={oppStateFinal.active.species}
+          class="sprite-front drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)] {oppStateFinal.active.hasSubstitute ? 'behind-sub' : ''}"
           style="image-rendering: pixelated;"
           onerror={onSpriteError}
         />
       </div>
       <div class="sprite-shadow opp-shadow"></div>
-    {:else if oppState.active?.fainted}
+    {:else if oppStateFinal.active?.fainted}
       <div class="text-center opacity-30 text-5xl">💀</div>
     {:else}
       <div class="text-center opacity-20">
