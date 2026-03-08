@@ -16,6 +16,9 @@ const { authMiddleware } = require('./middleware/auth');
 const app = express();
 const server = http.createServer(app);
 
+// Trust nginx reverse proxy so req.ip is the real client IP (needed for rate limiting)
+app.set('trust proxy', 1);
+
 const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
