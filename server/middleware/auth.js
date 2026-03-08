@@ -1,7 +1,14 @@
 const jwt = require('jsonwebtoken');
 const cookie = require('cookie-parser');
+const crypto = require('crypto');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-change-me-in-production';
+// In production, JWT_SECRET must be set. In dev, generate a random one per process
+// so tokens don't survive restarts (acceptable for dev).
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is required in production');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 
 function authMiddleware(req, res, next) {
   const token = req.cookies?.token;

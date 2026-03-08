@@ -1,12 +1,25 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
 const prisma = require('../db');
 const { signToken, authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Rate limit: 5 attempts per 15 minutes per IP+username for login/register
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Try again in 15 minutes.' },
+  // Key by IP only — simple and safe for a private server
+  skipSuccessfulRequests: true, // Only count failed attempts
+  validate: { xForwardedForHeader: false },
+});
+
 // POST /api/auth/register
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { username, password, inviteCode } = req.body;
 
@@ -69,7 +82,7 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 
