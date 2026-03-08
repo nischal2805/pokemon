@@ -27,7 +27,7 @@ services:
       HOST: 0.0.0.0
 
   nginx:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
       - client
