@@ -2,7 +2,6 @@
  * BattleManager — manages all active battles, pending challenges, and coordinates
  * between sockets and BattleRoom instances.
  */
-const { v4: uuidv4 } = require('uuid');
 const BattleRoom = require('./BattleRoom');
 const { isValidFormat, isRandomFormat } = require('./formats');
 const { calculateElo } = require('../elo');
@@ -43,7 +42,7 @@ class BattleManager {
       throw new Error('You must select a team for this format');
     }
 
-    const battleId = uuidv4();
+    const battleId = crypto.randomUUID();
     this.challenges.set(battleId, {
       challenger, // { id, username }
       targetId,

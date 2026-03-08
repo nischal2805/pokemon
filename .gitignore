@@ -1,12 +1,21 @@
 # Environment secrets - NEVER commit
 .env
+.env.*
 
 # Node
 node_modules/
 
 # Build output
 client/build/
+client/.svelte-kit/
+
+# SQLite data (local dev)
+data/
+
+# Reference files (not needed in repo)
+reference/
 
 # Misc
 *.log
 .DS_Store
+Thumb.db

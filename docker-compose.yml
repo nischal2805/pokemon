@@ -1,34 +1,18 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: pokeserver
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   server:
     build: ./server
     restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@db:5432/pokeserver?schema=public
       JWT_SECRET: ${JWT_SECRET}
       PORT: 3001
       CLIENT_URL: https://${DOMAIN}
       INVITE_CODE: ${INVITE_CODE}
       MAX_USERS: ${MAX_USERS:-20}
+      DB_DIR: /data
+    volumes:
+      - sqlite-data:/data
 
   client:
     build:
@@ -53,21 +37,12 @@ services:
       - '443:443'
     volumes:
       - ./nginx.conf:/etc/nginx/templates/default.conf.template:ro
-      - certbot-certs:/etc/letsencrypt:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
       - certbot-www:/var/www/certbot:ro
     environment:
       DOMAIN: ${DOMAIN}
       NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx/conf.d
 
-  certbot:
-    image: certbot/certbot
-    restart: unless-stopped
-    volumes:
-      - certbot-certs:/etc/letsencrypt
-      - certbot-www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
-
 volumes:
-  pgdata:
-  certbot-certs:
+  sqlite-data:
   certbot-www:
