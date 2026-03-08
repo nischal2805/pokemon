@@ -10,6 +10,18 @@
   }
   let { state }: Props = $props();
 
+  /* ── Battle background themes ── */
+  const BG_THEMES = [
+    { name: 'Forest',   outer: 'linear-gradient(170deg, #1a3a2a 0%, #2d5a3f 30%, #3d7a5c 55%, #52b788 80%, #74c69d 100%)', border: '#1a3a2a', platform: 'rgba(0,0,0,0.15)' },
+    { name: 'Cave',     outer: 'linear-gradient(170deg, #0e0e1e 0%, #1a1a30 30%, #252545 55%, #2e2e58 80%, #3a3a6e 100%)', border: '#08080e', platform: 'rgba(120,100,220,0.12)' },
+    { name: 'Ocean',    outer: 'linear-gradient(170deg, #051525 0%, #0a2d5a 30%, #0d47a1 55%, #1565c0 80%, #29b6f6 100%)', border: '#03101a', platform: 'rgba(255,255,255,0.1)' },
+    { name: 'Tundra',   outer: 'linear-gradient(170deg, #0a1828 0%, #12294a 30%, #1a3d6e 55%, #22558e 80%, #3a7ab5 100%)', border: '#060f18', platform: 'rgba(150,210,255,0.12)' },
+    { name: 'Desert',   outer: 'linear-gradient(170deg, #3d1f00 0%, #6b3500 30%, #994d0a 55%, #b5651d 80%, #d4892e 100%)', border: '#250f00', platform: 'rgba(0,0,0,0.18)' },
+    { name: 'Volcanic', outer: 'linear-gradient(170deg, #0d0300 0%, #2a0800 30%, #4a1000 55%, #741a00 80%, #a82800 100%)', border: '#080200', platform: 'rgba(255,80,0,0.14)' },
+    { name: 'Sky',      outer: 'linear-gradient(170deg, #0d1b3e 0%, #1a3260 30%, #2a5090 55%, #3a70b8 80%, #5a9fd4 100%)', border: '#080f24', platform: 'rgba(255,255,255,0.1)' },
+  ] as const;
+  let bgTheme = $state(BG_THEMES[Math.floor(Math.random() * BG_THEMES.length)]);
+
   /* ── Move Effect state ── */
   let moveEffectActive = $derived($animEvent?.type === 'move' && !!$animEvent?.value);
   let moveEffectName = $derived($animEvent?.type === 'move' ? ($animEvent?.value ?? '') : '');
@@ -36,6 +48,7 @@
     let activeFainted = false;
     let activeStatus = '';
     let activeItem = '';
+    let activeSub = false;
 
     for (const line of log) {
       const parts = line.split('|');
@@ -55,6 +68,7 @@
         activeFainted = condition.includes('fnt');
         activeStatus = '';
         activeItem = '';
+        activeSub = false;
       }
       if (cmd === '-damage' || cmd === '-heal') {
         if (!ident.startsWith(prefix) && !ident.startsWith(`${side}: `)) continue;
@@ -90,6 +104,14 @@
         if (!ident.startsWith(prefix) && !ident.startsWith(`${side}: `)) continue;
         activeItem = '';
       }
+      if (cmd === '-start') {
+        if (!ident.startsWith(prefix) && !ident.startsWith(`${side}: `)) continue;
+        if ((parts[3] ?? '').includes('Substitute')) activeSub = true;
+      }
+      if (cmd === '-end') {
+        if (!ident.startsWith(prefix) && !ident.startsWith(`${side}: `)) continue;
+        if ((parts[3] ?? '').includes('Substitute')) activeSub = false;
+      }
     }
 
     // Fall back to request data if no log lines have played yet
@@ -116,6 +138,7 @@
       fainted: activeFainted,
       status: activeStatus,
       item: activeItem,
+      hasSubstitute: activeSub,
     };
   });
 
@@ -134,6 +157,7 @@
     active: boolean;
     status: string;
     item: string;
+    hasSubstitute: boolean;
   }
 
   let oppState = $derived.by(() => {
@@ -171,6 +195,7 @@
           active: true,
           status: existing?.status ?? '',
           item: existing?.item ?? '',
+          hasSubstitute: false,
         });
         currentActive = name;
       }
@@ -235,6 +260,20 @@
         if (!ident.startsWith(prefix) && !ident.startsWith(`${side}: `)) continue;
         const name = ident.includes(': ') ? ident.split(': ')[1] : ident;
         if (seen.has(name)) seen.get(name)!.item = '';
+      }
+
+      if (cmd === '-start') {
+        const ident = parts[2] ?? '';
+        if (!ident.startsWith(prefix) && !ident.startsWith(`${side}: `)) continue;
+        const name = ident.includes(': ') ? ident.split(': ')[1] : ident;
+        if ((parts[3] ?? '').includes('Substitute') && seen.has(name)) seen.get(name)!.hasSubstitute = true;
+      }
+
+      if (cmd === '-end') {
+        const ident = parts[2] ?? '';
+        if (!ident.startsWith(prefix) && !ident.startsWith(`${side}: `)) continue;
+        const name = ident.includes(': ') ? ident.split(': ')[1] : ident;
+        if ((parts[3] ?? '').includes('Substitute') && seen.has(name)) seen.get(name)!.hasSubstitute = false;
       }
     }
 
@@ -309,10 +348,22 @@
 </script>
 
 <!-- ═══ BATTLEFIELD ═══ -->
-<div class="battlefield rounded-2xl relative overflow-hidden" style="min-height: 380px;">
+<div class="battlefield rounded-2xl relative overflow-hidden"
+  style="min-height: 380px;
+    background: {bgTheme.outer};
+    border-color: {bgTheme.border};
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.4);"
+>
+  <!-- Bg label (tiny, top-left corner) -->
+  <span class="absolute top-1 left-2 z-10 text-[9px] text-white/20 font-mono select-none">{bgTheme.name}</span>
   <!-- Battlefield background -->
   <div class="absolute inset-0 z-0">
-    <div class="field-bg"></div>
+    <div class="field-bg"
+      style="background:
+        radial-gradient(ellipse 45% 12% at 75% 42%, {bgTheme.platform} 0%, transparent 100%),
+        radial-gradient(ellipse 40% 10% at 22% 85%, {bgTheme.platform} 0%, transparent 100%),
+        radial-gradient(ellipse 70% 30% at 50% 10%, rgba(255,255,255,0.05) 0%, transparent 100%);"
+    ></div>
   </div>
 
   <!-- Turn Counter -->
@@ -377,10 +428,13 @@
   <div class="absolute z-10 opp-sprite-area flex flex-col items-center">
     {#if oppState.active && !oppState.active.fainted}
       <div class={oppSpriteClass} style="position:relative;">
+        {#if oppState.active.hasSubstitute}
+          <div class="substitute-doll substitute-doll-opp" title="Substitute">🪆</div>
+        {/if}
         <img
           src={spriteUrl(oppState.active.species)}
           alt={oppState.active.species}
-          class="sprite-front drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
+          class="sprite-front drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)] {oppState.active.hasSubstitute ? 'behind-sub' : ''}"
           style="image-rendering: pixelated;"
           onerror={onSpriteError}
         />
@@ -399,10 +453,13 @@
   <div class="absolute z-10 my-sprite-area flex flex-col items-center">
     {#if myVisualState.species && !myVisualState.fainted}
       <div class={mySpriteClass} style="position:relative;">
+        {#if myVisualState.hasSubstitute}
+          <div class="substitute-doll substitute-doll-my" title="Substitute">🪆</div>
+        {/if}
         <img
           src={spriteUrl(myVisualState.species, true)}
           alt={myVisualState.name ?? '???'}
-          class="sprite-back drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
+          class="sprite-back drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)] {myVisualState.hasSubstitute ? 'behind-sub' : ''}"
           style="image-rendering: pixelated;"
           onerror={onSpriteError}
         />
@@ -463,24 +520,30 @@
 
 <style>
   .battlefield {
-    background:
-      linear-gradient(170deg, #1a3a2a 0%, #2d5a3f 30%, #3d7a5c 55%, #52b788 80%, #74c69d 100%);
-    border: 2px solid #1a3a2a;
-    box-shadow: inset 0 0 60px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.4);
+    border: 2px solid;
   }
 
   .field-bg {
     width: 100%;
     height: 100%;
-    background:
-      /* Platform under opponent (top right) */
-      radial-gradient(ellipse 45% 12% at 75% 42%, rgba(0,0,0,0.15) 0%, transparent 100%),
-      /* Platform under player (bottom left) */
-      radial-gradient(ellipse 40% 10% at 22% 85%, rgba(0,0,0,0.15) 0%, transparent 100%),
-      /* Light from top */
-      radial-gradient(ellipse 70% 30% at 50% 10%, rgba(255,255,255,0.05) 0%, transparent 100%),
-      /* Grass texture hint */
-      repeating-linear-gradient(90deg, transparent, transparent 30px, rgba(255,255,255,0.015) 30px, rgba(255,255,255,0.015) 32px);
+  }
+
+  /* Substitute doll overlay */
+  :global(.substitute-doll) {
+    position: absolute;
+    font-size: 52px;
+    z-index: 6;
+    pointer-events: none;
+    filter: drop-shadow(0 0 10px rgba(100,200,255,0.7));
+    animation: subPulse 2s ease-in-out infinite;
+  }
+  :global(.substitute-doll-opp) { top: -8px; left: 50%; transform: translateX(-50%) scaleX(1); }
+  :global(.substitute-doll-my)  { top: -8px; left: 50%; transform: translateX(-50%); }
+  :global(.behind-sub) { opacity: 0.35; filter: brightness(0.6) saturate(0.4); }
+
+  @keyframes subPulse {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50%       { transform: translateX(-50%) translateY(-4px); }
   }
 
   .info-plate {

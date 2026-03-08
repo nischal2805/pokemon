@@ -148,12 +148,16 @@ async function playQueue(mySide: string) {
       if (remaining > 0) await sleep(remaining);
       if (anim) animEvent.set(null);
     }
-    // For move events: show move animation, then the follow-up events handle impact
+    // For move events: play sprite animation first, then show log text ~250ms later
+    // so the visual leads the text (matches how Showdown feels)
     else {
       if (anim) animEvent.set(anim);
-      visibleLog.update(v => [...v, line]);
       const delay = getDelay(line);
-      if (delay > 0) await sleep(delay);
+      const textDelay = (anim && cmd === 'move') ? Math.min(250, delay) : 0;
+      if (textDelay > 0) await sleep(textDelay);
+      visibleLog.update(v => [...v, line]);
+      const remaining = delay - textDelay;
+      if (remaining > 0) await sleep(remaining);
       if (anim) animEvent.set(null);
     }
   }

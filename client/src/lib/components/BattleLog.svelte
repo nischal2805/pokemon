@@ -120,6 +120,7 @@
     if (line.startsWith('|-end|')) {
       const p = line.split('|');
       if ((p[3] ?? '').includes('confusion')) return { html: `<b>${nick(p[2])}</b> snapped out of confusion!`, cls: 'heal' };
+      if ((p[3] ?? '').includes('Substitute')) return { html: `<b>${nick(p[2])}</b>'s substitute broke!`, cls: 'miss' };
       return null;
     }
     if (line.startsWith('|cant|')) {
