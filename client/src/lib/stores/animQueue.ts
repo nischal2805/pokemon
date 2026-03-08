@@ -117,7 +117,11 @@ async function playQueue(mySide: string) {
 
   while (queue.length > 0) {
     // If skipToEnd was called, this instance is stale — bail out
-    if (myId !== playId) return;
+    if (myId !== playId) {
+      playing = false;
+      isAnimating.set(false);
+      return;
+    }
 
     const line = queue.shift()!;
     const parts = line.split('|');
