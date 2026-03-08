@@ -41,7 +41,7 @@
 {#if $isLoggedIn}
   <nav class="bg-[var(--bg-secondary)] border-b border-[var(--bg-card)] px-6 py-3 flex items-center justify-between">
     <a href="/" class="flex items-center gap-2 text-xl font-bold text-[var(--accent)]">
-      <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png" alt="Master Ball" class="w-7 h-7 object-contain" style="image-rendering: pixelated;" />
+      <img src="/masterball.png" alt="Master Ball" class="w-7 h-7 object-contain" style="image-rendering: pixelated;" />
       PokeServer
     </a>
     <div class="flex items-center gap-4">
