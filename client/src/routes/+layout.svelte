@@ -40,7 +40,10 @@
 
 {#if $isLoggedIn}
   <nav class="bg-[var(--bg-secondary)] border-b border-[var(--bg-card)] px-6 py-3 flex items-center justify-between">
-    <a href="/" class="text-xl font-bold text-[var(--accent)]">⚡ PokeServer</a>
+    <a href="/" class="flex items-center gap-2 text-xl font-bold text-[var(--accent)]">
+      <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png" alt="Master Ball" class="w-7 h-7 object-contain" style="image-rendering: pixelated;" />
+      PokeServer
+    </a>
     <div class="flex items-center gap-4">
       <a href="/" class="hover:text-[var(--accent)] transition-colors">Lobby</a>
       <a href="/leaderboard" class="hover:text-[var(--accent)] transition-colors">Leaderboard</a>
