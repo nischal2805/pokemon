@@ -94,20 +94,26 @@ const battle = {
     const createdAt = new Date().toISOString();
     const endedAt = data.endedAt ? data.endedAt.toISOString() : null;
 
-    db.prepare(`
+    // Use a transaction so battle + participants are atomic
+    const insertBattle = db.prepare(`
       INSERT INTO Battle (id, format, createdAt, endedAt, winnerId, replayLog)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(data.id, data.format, createdAt, endedAt, data.winnerId ?? null, data.replayLog ?? '');
+    `);
+    const insertParticipant = db.prepare(
+      'INSERT INTO BattleParticipant (id, battleId, userId, side) VALUES (?, ?, ?, ?)'
+    );
 
-    // Nested participants create
-    if (data.participants?.create) {
-      const ins = db.prepare(
-        'INSERT INTO BattleParticipant (id, battleId, userId, side) VALUES (?, ?, ?, ?)'
-      );
-      for (const p of data.participants.create) {
-        ins.run(crypto.randomUUID(), data.id, p.userId, p.side);
+    const runInTransaction = db.transaction(() => {
+      insertBattle.run(data.id, data.format, createdAt, endedAt, data.winnerId ?? null, data.replayLog ?? '');
+
+      if (data.participants?.create) {
+        for (const p of data.participants.create) {
+          insertParticipant.run(crypto.randomUUID(), data.id, p.userId, p.side);
+        }
       }
-    }
+    });
+
+    runInTransaction();
 
     return { id: data.id, format: data.format, createdAt, endedAt, winnerId: data.winnerId ?? null };
   },

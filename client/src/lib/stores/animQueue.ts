@@ -26,6 +26,7 @@ export const animEvent = writable<{
 let queue: string[] = [];
 let playing = false;
 let skipMode = false;
+let playId = 0; // Monotonic ID to detect stale playQueue instances
 
 /** Get delay in ms for a given protocol line */
 function getDelay(line: string): number {
@@ -112,8 +113,12 @@ async function playQueue(mySide: string) {
   if (playing) return;
   playing = true;
   isAnimating.set(true);
+  const myId = ++playId; // Capture ID so we can detect if skipToEnd invalidated us
 
   while (queue.length > 0) {
+    // If skipToEnd was called, this instance is stale — bail out
+    if (myId !== playId) return;
+
     const line = queue.shift()!;
     const parts = line.split('|');
     const cmd = parts[1];
@@ -181,6 +186,7 @@ export function enqueueLines(lines: string[], mySide: string) {
 /** Skip to end — instantly show all remaining lines */
 export function skipToEnd() {
   skipMode = true;
+  playId++; // Invalidate any in-flight playQueue
   // Flush remaining queue immediately
   if (queue.length > 0) {
     visibleLog.update(v => [...v, ...queue]);
@@ -197,6 +203,7 @@ export function resetAnimQueue() {
   queue = [];
   playing = false;
   skipMode = false;
+  playId++; // Invalidate any in-flight playQueue
   visibleLog.set([]);
   isAnimating.set(false);
   animEvent.set(null);

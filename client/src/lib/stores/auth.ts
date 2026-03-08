@@ -8,6 +8,9 @@ interface User {
 export const user = writable<User | null>(null);
 export const isLoggedIn = derived(user, ($u) => $u !== null);
 
+/** True while the initial fetchMe() is still in flight */
+export const authLoading = writable(true);
+
 // In Docker behind nginx, VITE_SERVER_URL is empty → same-origin requests.
 // In dev, it falls back to localhost:3001.
 const API = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:3001';
@@ -62,5 +65,7 @@ export async function fetchMe() {
     user.set(data.user);
   } catch {
     user.set(null);
+  } finally {
+    authLoading.set(false);
   }
 }

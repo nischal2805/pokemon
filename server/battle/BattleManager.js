@@ -17,6 +17,33 @@ class BattleManager {
 
     // Track which battle each user is in: userId -> battleId
     this.userBattles = new Map();
+
+    // Safety net: periodically clean up stale battles (stuck > 30 min)
+    this._cleanupInterval = setInterval(() => this._cleanupStaleBattles(), 60_000);
+  }
+
+  /**
+   * Clean up battles that have been running for over 30 minutes.
+   * This is a safety net for battles where the sim crashed or the stream
+   * ended without producing |win| or |tie|.
+   */
+  _cleanupStaleBattles() {
+    const MAX_BATTLE_AGE_MS = 30 * 60 * 1000; // 30 minutes
+    const now = Date.now();
+
+    for (const [battleId, room] of this.battles) {
+      if (room.ended) continue;
+
+      // Use the createdAt from the room (or fallback to checking how long it's existed)
+      const age = now - (room._createdAt || now);
+      if (age > MAX_BATTLE_AGE_MS) {
+        console.warn(`[BattleManager] Force-cleaning stale battle ${battleId} (age: ${Math.round(age / 60000)}min)`);
+        this.userBattles.delete(room.p1.id);
+        this.userBattles.delete(room.p2.id);
+        this.battles.delete(battleId);
+        room.destroy();
+      }
+    }
   }
 
   /**
@@ -83,6 +110,12 @@ class BattleManager {
       throw new Error('You are already in a battle');
     }
 
+    // Check if challenger is already in a (different) battle
+    if (this.userBattles.has(challenge.challenger.id)) {
+      this.challenges.delete(battleId);
+      throw new Error('Challenger is already in another battle');
+    }
+
     // Non-random formats require a team
     if (!isRandomFormat(challenge.format) && !team) {
       throw new Error('You must select a team for this format');
@@ -108,13 +141,22 @@ class BattleManager {
       await this._onBattleEnd(room, result);
     });
 
-    // Initialize the battle (starts sim streams)
-    room.init();
+    // Initialize the battle — if anything fails, clean up the state we just set
+    try {
+      room.init();
 
-    // For non-random formats, submit both teams (this triggers _startBattle once both are in)
-    if (!isRandomFormat(challenge.format)) {
-      room.submitTeam('p1', challenge.challengerTeam);
-      room.submitTeam('p2', team);
+      // For non-random formats, submit both teams (this triggers _startBattle once both are in)
+      if (!isRandomFormat(challenge.format)) {
+        room.submitTeam('p1', challenge.challengerTeam);
+        room.submitTeam('p2', team);
+      }
+    } catch (err) {
+      // Rollback: remove the entries we just added so users aren't stuck
+      this.userBattles.delete(challenge.challenger.id);
+      this.userBattles.delete(accepter.id);
+      this.battles.delete(battleId);
+      room.destroy();
+      throw err;
     }
 
     return room;

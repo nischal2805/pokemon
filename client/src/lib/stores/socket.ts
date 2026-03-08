@@ -11,6 +11,13 @@ export const connected = writable(false);
 export const onlineUsers = writable<{ id: string; username: string }[]>([]);
 
 export function connectSocket() {
+  // Disconnect existing socket first (prevents duplicates on re-auth)
+  const existing = get(socket);
+  if (existing) {
+    existing.disconnect();
+    socket.set(null);
+  }
+
   const u = get(user);
   if (!u) return;
 
@@ -22,6 +29,18 @@ export function connectSocket() {
   s.on('connect', () => connected.set(true));
   s.on('disconnect', () => connected.set(false));
   s.on('onlineList', (users) => onlineUsers.set(users));
+
+  // Eagerly disconnect on tab close / navigation so the server removes us immediately
+  // instead of waiting for the ping timeout
+  const onBeforeUnload = () => {
+    s.disconnect();
+  };
+  window.addEventListener('beforeunload', onBeforeUnload);
+
+  // Clean up the listener when the socket is eventually disconnected programmatically
+  s.on('disconnect', () => {
+    window.removeEventListener('beforeunload', onBeforeUnload);
+  });
 
   socket.set(s);
   return s;

@@ -21,6 +21,9 @@ const io = new Server(server, {
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
     credentials: true,
   },
+  // Faster disconnect detection: detect closed tabs within ~10s instead of ~45s
+  pingInterval: 10000,
+  pingTimeout: 5000,
 });
 
 // Middleware

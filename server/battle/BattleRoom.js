@@ -122,6 +122,7 @@ class BattleRoom extends EventEmitter {
     this.winner = null;
     this.winnerId = null;
     this.fullLog = '';
+    this._createdAt = Date.now();
 
     this.stream = null;
     this.streams = null;
@@ -199,17 +200,17 @@ class BattleRoom extends EventEmitter {
   _startBattle() {
     this.started = true;
 
-    this.streams.omniscient.write(`>start {"formatid":"${this.format}"}`);
+    this.streams.omniscient.write(`>start ${JSON.stringify({ formatid: this.format })}`);
 
     if (this.isRandom) {
-      this.streams.omniscient.write(`>player p1 {"name":"${this.p1.username}"}`);
-      this.streams.omniscient.write(`>player p2 {"name":"${this.p2.username}"}`);
+      this.streams.omniscient.write(`>player p1 ${JSON.stringify({ name: this.p1.username })}`);
+      this.streams.omniscient.write(`>player p2 ${JSON.stringify({ name: this.p2.username })}`);
     } else {
       this.streams.omniscient.write(
-        `>player p1 {"name":"${this.p1.username}","team":"${this.p1Team}"}`
+        `>player p1 ${JSON.stringify({ name: this.p1.username, team: this.p1Team })}`
       );
       this.streams.omniscient.write(
-        `>player p2 {"name":"${this.p2.username}","team":"${this.p2Team}"}`
+        `>player p2 ${JSON.stringify({ name: this.p2.username, team: this.p2Team })}`
       );
     }
 
@@ -229,6 +230,20 @@ class BattleRoom extends EventEmitter {
       } catch (err) {
         console.error(`[${this.battleId}] omniscient stream error:`, err.message);
       }
+
+      // Stream ended — if battle never produced |win| or |tie|, force cleanup
+      if (!this.ended) {
+        console.warn(`[${this.battleId}] omniscient stream ended without |win| or |tie|, forcing cleanup`);
+        this.ended = true;
+        this.emit('end', {
+          battleId: this.battleId,
+          winner: null,
+          winnerId: null,
+          winnerName: null,
+          loserId: null,
+          log: this.fullLog,
+        });
+      }
     })();
   }
 
@@ -237,6 +252,8 @@ class BattleRoom extends EventEmitter {
    */
   _checkForEnd(chunk) {
     for (const line of chunk.split('\n')) {
+      if (this.ended) break; // Prevent double-emit if chunk has multiple |win|/|tie| lines
+
       if (line.startsWith('|win|')) {
         const winnerName = line.slice('|win|'.length);
         this.ended = true;

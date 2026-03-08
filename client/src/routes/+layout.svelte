@@ -1,7 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { onMount, onDestroy } from 'svelte';
-  import { fetchMe, user, logout, isLoggedIn } from '$lib/stores/auth';
+  import { fetchMe, user, logout, isLoggedIn, authLoading } from '$lib/stores/auth';
   import { connectSocket, disconnectSocket, connected, socket } from '$lib/stores/socket';
   import { initBattleListeners } from '$lib/stores/battle';
   import { goto } from '$app/navigation';
@@ -38,7 +38,14 @@
   }
 </script>
 
-{#if $isLoggedIn}
+{#if $authLoading}
+  <div class="min-h-screen flex items-center justify-center">
+    <div class="text-center animate-pulse">
+      <div class="text-5xl mb-3">⚡</div>
+      <p class="text-sm text-[var(--text-muted)]">Loading...</p>
+    </div>
+  </div>
+{:else if $isLoggedIn}
   <nav class="bg-[var(--bg-secondary)] border-b border-[var(--bg-card)] px-6 py-3 flex items-center justify-between">
     <a href="/" class="flex items-center gap-2 text-xl font-bold text-[var(--accent)]">
       <img src="/masterball.png" alt="Master Ball" class="w-7 h-7 object-contain" style="image-rendering: pixelated;" />
@@ -62,6 +69,8 @@
   </nav>
 {/if}
 
+{#if !$authLoading}
 <main class="min-h-[calc(100vh-52px)]">
   {@render children()}
 </main>
+{/if}

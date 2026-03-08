@@ -7,6 +7,7 @@ services:
     environment:
       JWT_SECRET: ${JWT_SECRET}
       PORT: 3001
+      NODE_ENV: production
       CLIENT_URL: https://${DOMAIN}
       INVITE_CODE: ${INVITE_CODE}
       MAX_USERS: ${MAX_USERS:-20}

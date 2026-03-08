@@ -22,6 +22,11 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
+    // Only allow alphanumeric, underscore, hyphen to prevent JSON injection and XSS
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      return res.status(400).json({ error: 'Username can only contain letters, numbers, underscores, and hyphens' });
+    }
+
     // Check invite code if configured
     const requiredCode = process.env.INVITE_CODE;
     if (requiredCode && inviteCode !== requiredCode) {

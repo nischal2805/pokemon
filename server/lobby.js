@@ -11,8 +11,18 @@ const battleManager = new BattleManager();
 
 // Track online users: socketId -> { id, username }
 const onlineUsers = new Map();
-// Track userId -> socketId for targeting specific users
+// Track userId -> Set<socketId> for targeting specific users (supports multiple tabs)
 const userSockets = new Map();
+
+/** Get the most recent socket ID for a user (for event delivery) */
+function getUserSocketId(userId) {
+  const sockets = userSockets.get(userId);
+  if (!sockets || sockets.size === 0) return null;
+  // Return the last-added socket (most recent connection)
+  let last = null;
+  for (const sid of sockets) last = sid;
+  return last;
+}
 
 function setupLobby(io) {
   io.on('connection', (socket) => {
@@ -21,7 +31,8 @@ function setupLobby(io) {
 
     // Register user as online
     onlineUsers.set(socket.id, user);
-    userSockets.set(user.id, socket.id);
+    if (!userSockets.has(user.id)) userSockets.set(user.id, new Set());
+    userSockets.get(user.id).add(socket.id);
 
     // Broadcast updated online list to everyone
     broadcastOnlineList(io);
@@ -30,7 +41,7 @@ function setupLobby(io) {
 
     socket.on('challenge', ({ targetUser, format, team }) => {
       try {
-        const targetSocketId = userSockets.get(targetUser);
+        const targetSocketId = getUserSocketId(targetUser);
         if (!targetSocketId) {
           return socket.emit('error', { message: 'User is not online' });
         }
@@ -61,8 +72,8 @@ function setupLobby(io) {
         const room = battleManager.acceptChallenge(battleId, user, team);
 
         // Both players join the socket room
-        const p1SocketId = userSockets.get(room.p1.id);
-        const p2SocketId = userSockets.get(room.p2.id);
+        const p1SocketId = getUserSocketId(room.p1.id);
+        const p2SocketId = getUserSocketId(room.p2.id);
 
         console.log(`[Battle ${battleId}] p1=${room.p1.username} socket=${p1SocketId}, p2=${room.p2.username} socket=${p2SocketId}`);
 
@@ -94,7 +105,7 @@ function setupLobby(io) {
 
         // Notify the challenger
         if (challenge) {
-          const challengerSocketId = userSockets.get(challenge.challenger.id);
+          const challengerSocketId = getUserSocketId(challenge.challenger.id);
           if (challengerSocketId) {
             io.to(challengerSocketId).emit('challengeDeclined', {
               battleId,
@@ -185,15 +196,23 @@ function setupLobby(io) {
     socket.on('disconnect', () => {
       console.log(`🔴 ${user.username} disconnected`);
       onlineUsers.delete(socket.id);
-      userSockets.delete(user.id);
+      // Remove this specific socket from the user's socket set
+      const sockets = userSockets.get(user.id);
+      if (sockets) {
+        sockets.delete(socket.id);
+        if (sockets.size === 0) userSockets.delete(user.id);
+      }
       broadcastOnlineList(io);
 
-      // If user was in a battle, forfeit it
-      const currentBattle = battleManager.getUserBattle(user.id);
-      if (currentBattle && !currentBattle.ended) {
-        const side = battleManager.getUserSide(currentBattle.battleId, user.id);
-        if (side) {
-          currentBattle.forfeit(side);
+      // If user was in a battle and has NO remaining sockets, forfeit it
+      const hasActiveSockets = userSockets.has(user.id) && userSockets.get(user.id).size > 0;
+      if (!hasActiveSockets) {
+        const currentBattle = battleManager.getUserBattle(user.id);
+        if (currentBattle && !currentBattle.ended) {
+          const side = battleManager.getUserSide(currentBattle.battleId, user.id);
+          if (side) {
+            currentBattle.forfeit(side);
+          }
         }
       }
     });
@@ -207,7 +226,7 @@ function _wireBattleEvents(io, room) {
   // Per-player updates — send to the specific player only
   room.on('update', ({ side, log }) => {
     const userId = side === 'p1' ? room.p1.id : room.p2.id;
-    const socketId = userSockets.get(userId);
+    const socketId = getUserSocketId(userId);
     console.log(`[Battle ${room.battleId}] update for ${side} -> socket=${socketId}, log=${log.length} chars`);
     if (socketId) {
       io.to(socketId).emit('battleUpdate', {
@@ -220,7 +239,7 @@ function _wireBattleEvents(io, room) {
   // Request — player needs to make a choice (send only to that player)
   room.on('request', ({ side, request }) => {
     const userId = side === 'p1' ? room.p1.id : room.p2.id;
-    const socketId = userSockets.get(userId);
+    const socketId = getUserSocketId(userId);
     console.log(`[Battle ${room.battleId}] request for ${side} -> socket=${socketId}, teamPreview=${!!request.teamPreview}, forceSwitch=${!!request.forceSwitch}, wait=${!!request.wait}`);
     if (socketId) {
       io.to(socketId).emit('battleRequest', {
@@ -233,7 +252,7 @@ function _wireBattleEvents(io, room) {
   // Choice error — player sent an invalid move, sim will resend request
   room.on('choiceError', ({ side, message }) => {
     const userId = side === 'p1' ? room.p1.id : room.p2.id;
-    const socketId = userSockets.get(userId);
+    const socketId = getUserSocketId(userId);
     if (socketId) {
       io.to(socketId).emit('battleChoiceError', {
         battleId: room.battleId,
@@ -251,8 +270,8 @@ function _wireBattleEvents(io, room) {
     });
 
     // Remove players from socket room
-    const p1SocketId = userSockets.get(room.p1.id);
-    const p2SocketId = userSockets.get(room.p2.id);
+    const p1SocketId = getUserSocketId(room.p1.id);
+    const p2SocketId = getUserSocketId(room.p2.id);
     if (p1SocketId) io.sockets.sockets.get(p1SocketId)?.leave(room.battleId);
     if (p2SocketId) io.sockets.sockets.get(p2SocketId)?.leave(room.battleId);
   });
@@ -262,10 +281,15 @@ function _wireBattleEvents(io, room) {
  * Send the online user list to all connected clients.
  */
 function broadcastOnlineList(io) {
-  const users = Array.from(onlineUsers.values()).map((u) => ({
-    id: u.id,
-    username: u.username,
-  }));
+  // Deduplicate by userId (user may have multiple tabs open)
+  const seen = new Set();
+  const users = [];
+  for (const u of onlineUsers.values()) {
+    if (!seen.has(u.id)) {
+      seen.add(u.id);
+      users.push({ id: u.id, username: u.username });
+    }
+  }
   io.emit('onlineList', users);
 }
 
